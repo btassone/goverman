@@ -46,6 +46,28 @@ safe_remove_binary() {
     fi
 }
 
+# Function to check and handle default symlink
+check_default_symlink() {
+    local version="$1"
+    local go_binary="go${version}"
+    local gobin="$2"
+    local go_link="$gobin/go"
+    
+    if [[ -L "$go_link" ]]; then
+        local link_target=$(readlink "$go_link" | xargs basename)
+        if [[ "$link_target" == "$go_binary" ]]; then
+            echo ""
+            echo "Warning: This version is currently set as the default 'go' command"
+            echo "Removing the default symlink..."
+            rm -f "$go_link"
+            echo "✓ Default symlink removed"
+            echo ""
+            echo "Note: You'll need to set another version as default or the system Go will be used"
+            echo "Run: ./install-go.sh set-default <version> to set a new default"
+        fi
+    fi
+}
+
 # Check if version argument is provided
 if [[ $# -eq 0 ]]; then
     echo "Error: No version specified"
@@ -117,6 +139,10 @@ else
         echo "Warning: Could not get GOROOT from $GO_BINARY"
         echo "The Go installation directory may need to be removed manually."
     fi
+    
+    # Check if this version is set as default
+    GOBIN_DIR=$(dirname "$BINARY_PATH")
+    check_default_symlink "$VERSION" "$GOBIN_DIR"
     
     # Step 4: Remove the binary
     echo ""

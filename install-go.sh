@@ -9,20 +9,30 @@ set -e
 
 # Function to display usage
 show_usage() {
-    echo "Usage: $0 <version> [method]"
+    echo "Usage: $0 <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  <version> [method] [--default]   Install a Go version"
+    echo "  set-default <version>            Set a version as the default 'go' command"
+    echo "  list                             List installed Go versions"
     echo ""
     echo "Arguments:"
-    echo "  version    Go version to install (e.g., 1.23.9, 1.21.5)"
+    echo "  version    Go version to install/set (e.g., 1.23.9, 1.21.5)"
     echo "  method     Installation method: 'official' (default) or 'direct'"
+    echo ""
+    echo "Options:"
+    echo "  --default  Set this version as the default 'go' command after installation"
     echo ""
     echo "Methods:"
     echo "  official   Use 'go install golang.org/dl/goX.Y.Z@latest' (recommended)"
     echo "  direct     Download and extract binary directly (fallback for ARM64 issues)"
     echo ""
     echo "Examples:"
-    echo "  $0 1.23.9                 # Install using official method"
-    echo "  $0 1.23.9 direct          # Install using direct binary download"
-    echo "  $0 1.21.5 official        # Install using official method"
+    echo "  $0 1.23.9                        # Install using official method"
+    echo "  $0 1.23.9 direct                 # Install using direct binary download"
+    echo "  $0 1.21.5 official --default     # Install and set as default"
+    echo "  $0 set-default 1.21.5            # Set existing version as default"
+    echo "  $0 list                          # List all installed versions"
     exit 1
 }
 
@@ -373,6 +383,51 @@ verify_installation() {
     fi
 }
 
+# Function to set a Go version as default
+set_default_version() {
+    local version="$1"
+    local go_binary="go${version}"
+    local gobin=$(setup_go_path)
+    
+    # Check if the version exists
+    if ! command -v "$go_binary" >/dev/null 2>&1; then
+        echo "Error: Go version $version is not installed" >&2
+        echo "Run '$0 $version' to install it first" >&2
+        return 1
+    fi
+    
+    # Create or update the 'go' symlink in gobin
+    local go_link="$gobin/go"
+    
+    # Check if there's already a go command in gobin
+    if [[ -L "$go_link" ]]; then
+        echo "Current default: $(readlink "$go_link" | xargs basename)" >&2
+    elif [[ -f "$go_link" ]]; then
+        echo "Warning: $go_link exists but is not a symlink" >&2
+        echo "Please remove it manually before setting a default version" >&2
+        return 1
+    fi
+    
+    # Create the symlink (use relative path for portability)
+    cd "$gobin"
+    ln -sf "$go_binary" "go"
+    cd - >/dev/null
+    
+    echo "✓ Set go${version} as the default 'go' command" >&2
+    echo "" >&2
+    echo "Note: This will only work if $gobin comes before system Go in your PATH" >&2
+    echo "Current PATH order:" >&2
+    echo "$PATH" | tr ':' '\n' | grep -n "go" | head -5 | sed 's/^/  /' >&2
+    
+    # Verify it works
+    echo "" >&2
+    echo "Verification:" >&2
+    echo "  which go: $(which go)" >&2
+    echo "  go version: $(go version 2>/dev/null || echo "failed")" >&2
+    
+    return 0
+}
+
 # Function to list installed versions
 list_installed_versions() {
     echo "Locally Installed Go Versions"
@@ -381,6 +436,22 @@ list_installed_versions() {
     local found_versions=0
     declare -A seen_versions  # Track versions we've already seen
     
+    # Get gobin directory
+    local gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+    local gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    local gobin
+    if [[ -n "$gobin_env" ]]; then
+        gobin="$gobin_env"
+    else
+        gobin="$gopath/bin"
+    fi
+    
+    # Check if there's a default symlink in gobin
+    local default_symlink=""
+    if [[ -L "$gobin/go" ]]; then
+        default_symlink=$(readlink "$gobin/go" | xargs basename)
+    fi
+    
     # First, show the system default Go
     echo "System default Go:"
     echo "------------------"
@@ -388,7 +459,14 @@ list_installed_versions() {
         local default_version=$(go version 2>/dev/null || echo "unknown")
         local default_root=$(go env GOROOT 2>/dev/null || echo "unknown")
         local default_path=$(which go 2>/dev/null || echo "unknown")
-        echo "  go (default)"
+        local is_default_marker=""
+        
+        # Check if this is the goverman-managed default
+        if [[ "$default_path" == "$gobin/go" && -n "$default_symlink" ]]; then
+            is_default_marker=" (goverman default → $default_symlink)"
+        fi
+        
+        echo "  go$is_default_marker"
         echo "    Binary: $default_path"
         echo "    Version: $default_version"
         echo "    GOROOT: $default_root"
@@ -431,7 +509,14 @@ list_installed_versions() {
                         
                         local version_info=$("$binary" version 2>/dev/null || echo "unknown")
                         local goroot_info=$("$binary" env GOROOT 2>/dev/null || echo "unknown")
-                        echo "  $version_name"
+                        local default_marker=""
+                        
+                        # Check if this is the default
+                        if [[ "$version_name" == "$default_symlink" ]]; then
+                            default_marker=" [DEFAULT]"
+                        fi
+                        
+                        echo "  $version_name$default_marker"
                         echo "    Binary: $binary"
                         echo "    Version: $version_info"
                         echo "    GOROOT: $goroot_info"
@@ -495,21 +580,56 @@ list_installed_versions() {
 main() {
     # Check arguments
     if [[ $# -eq 0 ]]; then
-        echo "Error: No version specified"
+        echo "Error: No command specified"
         echo ""
         list_installed_versions
         echo ""
         show_usage
     fi
     
-    local version="$1"
-    local method="${2:-official}"
+    local command="$1"
     
-    # Validate method
-    if [[ "$method" != "official" && "$method" != "direct" ]]; then
-        echo "Error: Invalid method '$method'. Use 'official' or 'direct'"
-        show_usage
-    fi
+    # Handle special commands
+    case "$command" in
+        list)
+            list_installed_versions
+            exit 0
+            ;;
+        set-default)
+            if [[ -z "$2" ]]; then
+                echo "Error: No version specified for set-default"
+                show_usage
+            fi
+            set_default_version "$2"
+            exit $?
+            ;;
+        -h|--help|help)
+            show_usage
+            ;;
+    esac
+    
+    # If not a special command, assume it's a version to install
+    local version="$command"
+    local method="official"
+    local set_default=false
+    
+    # Parse remaining arguments
+    shift
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            official|direct)
+                method="$1"
+                ;;
+            --default)
+                set_default=true
+                ;;
+            *)
+                echo "Error: Unknown argument '$1'"
+                show_usage
+                ;;
+        esac
+        shift
+    done
     
     # Validate version format
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -554,16 +674,20 @@ main() {
     
     # Verify installation
     verify_installation "$version"
+    
+    # Set as default if requested
+    if [[ "$set_default" == "true" ]]; then
+        echo ""
+        echo "Setting as default Go version..."
+        echo "================================"
+        set_default_version "$version"
+    fi
 }
 
 # Handle special arguments
 case "${1:-}" in
     -h|--help|help)
         show_usage
-        ;;
-    -l|--list|list)
-        list_installed_versions
-        exit 0
         ;;
     *)
         main "$@"
