@@ -73,6 +73,104 @@ check_go_installed() {
     echo "✓ Go is installed: $(go version)"
 }
 
+# Function to detect user's shell
+detect_shell() {
+    local shell_name=""
+    
+    # First try to detect from SHELL environment variable
+    if [[ -n "$SHELL" ]]; then
+        shell_name=$(basename "$SHELL")
+    fi
+    
+    # If that fails, try to detect from current process
+    if [[ -z "$shell_name" ]]; then
+        shell_name=$(ps -p $$ -o comm= 2>/dev/null | sed 's/^-//')
+    fi
+    
+    echo "$shell_name"
+}
+
+# Function to get shell profile file
+get_shell_profile() {
+    local shell_name=$(detect_shell)
+    local profile_file=""
+    
+    case "$shell_name" in
+        bash)
+            if [[ -f "$HOME/.bashrc" ]]; then
+                profile_file="$HOME/.bashrc"
+            elif [[ -f "$HOME/.bash_profile" ]]; then
+                profile_file="$HOME/.bash_profile"
+            fi
+            ;;
+        zsh)
+            if [[ -f "$HOME/.zshrc" ]]; then
+                profile_file="$HOME/.zshrc"
+            elif [[ -f "$HOME/.zprofile" ]]; then
+                profile_file="$HOME/.zprofile"
+            fi
+            ;;
+        fish)
+            profile_file="$HOME/.config/fish/config.fish"
+            ;;
+        *)
+            # Default to .profile for unknown shells
+            profile_file="$HOME/.profile"
+            ;;
+    esac
+    
+    echo "$profile_file"
+}
+
+# Function to add PATH to shell profile
+add_to_shell_profile() {
+    local gobin="$1"
+    local profile_file=$(get_shell_profile)
+    local shell_name=$(detect_shell)
+    
+    if [[ -z "$profile_file" ]]; then
+        echo "Warning: Could not determine shell profile file" >&2
+        return 1
+    fi
+    
+    # Check if PATH export already exists
+    local path_export_line="export PATH=\"$gobin:\$PATH\""
+    local path_marker="# Added by goverman"
+    
+    # Check if already added
+    if [[ -f "$profile_file" ]] && grep -q "$gobin" "$profile_file" 2>/dev/null; then
+        echo "✓ $gobin already in $profile_file" >&2
+        return 0
+    fi
+    
+    echo "" >&2
+    echo "Would you like to add $gobin to your PATH permanently?" >&2
+    echo "This will add the following line to $profile_file:" >&2
+    echo "  $path_export_line" >&2
+    read -p "Add to PATH? (y/N): " -n 1 -r
+    echo >&2
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Create profile file if it doesn't exist
+        if [[ ! -f "$profile_file" ]]; then
+            touch "$profile_file"
+        fi
+        
+        # Add PATH export with marker comment
+        echo "" >> "$profile_file"
+        echo "$path_marker" >> "$profile_file"
+        echo "$path_export_line" >> "$profile_file"
+        
+        echo "✓ Added $gobin to PATH in $profile_file" >&2
+        echo "" >&2
+        echo "To use it in the current session, run:" >&2
+        echo "  source $profile_file" >&2
+        echo "Or restart your terminal." >&2
+    else
+        echo "Skipped adding to PATH permanently." >&2
+    fi
+}
+
 # Function to setup Go binary path
 setup_go_path() {
     local gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
@@ -92,13 +190,13 @@ setup_go_path() {
     # Check if Go bin is in PATH
     if [[ ":$PATH:" != *":$gobin:"* ]]; then
         echo "Warning: $gobin is not in your PATH" >&2
-        echo "Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):" >&2
-        echo "  export PATH=\"$gobin:\$PATH\"" >&2
-        echo "" >&2
         
         # Temporarily add to PATH for this session
         export PATH="$gobin:$PATH"
         echo "✓ Temporarily added $gobin to PATH for this session" >&2
+        
+        # Offer to add permanently
+        add_to_shell_profile "$gobin"
     else
         echo "✓ Go bin directory is in PATH" >&2
     fi
@@ -399,7 +497,7 @@ main() {
     if [[ $# -eq 0 ]]; then
         echo "Error: No version specified"
         echo ""
-        list_versions
+        list_installed_versions
         echo ""
         show_usage
     fi
