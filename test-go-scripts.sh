@@ -38,6 +38,11 @@ run_test() {
     echo ""
 }
 
+# Setup PATH for all tests
+GOPATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+GOBIN=$(go env GOBIN 2>/dev/null || echo "$GOPATH/bin")
+export PATH="$GOBIN:$PATH"
+
 # Pre-test cleanup
 echo "Pre-test cleanup..."
 if command_exists "go$TEST_VERSION"; then
