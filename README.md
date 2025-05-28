@@ -1,6 +1,6 @@
 # goverman
 
-[![Test Go Scripts](https://github.com/yourusername/goverman/actions/workflows/test.yml/badge.svg)](https://github.com/yourusername/goverman/actions/workflows/test.yml)
+[![Test Go Scripts](https://github.com/btassone/goverman/actions/workflows/test.yml/badge.svg)](https://github.com/btassone/goverman/actions/workflows/test.yml)
 
 A simple Go version manager that allows you to install and manage multiple Go versions on your system. Goverman provides bash scripts to easily install, uninstall, and switch between different Go versions without affecting your system's default Go installation.
 
