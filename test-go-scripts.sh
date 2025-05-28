@@ -21,6 +21,25 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to update PATH to include Go binaries
+update_path() {
+    GOPATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+    GOBIN=$(go env GOBIN 2>/dev/null || echo "")
+    
+    # If GOBIN is empty, use GOPATH/bin
+    if [[ -z "$GOBIN" ]]; then
+        GOBIN="$GOPATH/bin"
+    fi
+    
+    # Only add to PATH if not already there
+    if [[ ":$PATH:" != *":$GOBIN:"* ]]; then
+        export PATH="$GOBIN:$PATH"
+        echo "Updated PATH with: $GOBIN"
+    else
+        echo "PATH already contains: $GOBIN"
+    fi
+}
+
 # Function to run test
 run_test() {
     local test_name="$1"
@@ -56,6 +75,9 @@ echo "=== TEST 1: Install with official method ==="
 run_test "Install go$TEST_VERSION (official)" \
     "\"$INSTALL_SCRIPT\" \"$TEST_VERSION\" official"
 
+# Update PATH after installation
+update_path
+
 run_test "Verify go$TEST_VERSION binary exists" \
     "command_exists \"go$TEST_VERSION\""
 
@@ -78,6 +100,9 @@ echo "=== TEST 3: Install with direct method ==="
 run_test "Install go$TEST_VERSION (direct)" \
     "\"$INSTALL_SCRIPT\" \"$TEST_VERSION\" direct"
 
+# Update PATH after installation
+update_path
+
 run_test "Verify go$TEST_VERSION binary exists (direct)" \
     "command_exists \"go$TEST_VERSION\""
 
@@ -94,6 +119,9 @@ run_test "Verify GOROOT is set correctly" \
 echo "=== TEST 4: Reinstall over existing ==="
 run_test "Reinstall go$TEST_VERSION (should work)" \
     "echo 'y' | \"$INSTALL_SCRIPT\" \"$TEST_VERSION\" direct"
+
+# Update PATH after reinstallation
+update_path
 
 # Test 5: Final cleanup
 echo "=== TEST 5: Final cleanup ==="
