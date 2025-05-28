@@ -58,9 +58,34 @@ run_test() {
 }
 
 # Setup PATH for all tests
+# First, ensure we have access to system Go
+if [[ -f "$HOME/.zshrc" ]]; then
+    source "$HOME/.zshrc" 2>/dev/null || true
+elif [[ -f "$HOME/.bashrc" ]]; then
+    source "$HOME/.bashrc" 2>/dev/null || true
+fi
+
+# Add common Go installation paths
+export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
+
+# Now setup Go paths
 GOPATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
 GOBIN=$(go env GOBIN 2>/dev/null || echo "$GOPATH/bin")
 export PATH="$GOBIN:$PATH"
+
+# Check if Go is available
+if ! command -v go >/dev/null 2>&1; then
+    echo "Error: Go is not installed. The test requires a base Go installation."
+    echo "Please install Go first: https://go.dev/doc/install"
+    echo ""
+    echo "On Ubuntu/Debian: sudo apt install golang-go"
+    echo "Or download from: https://go.dev/dl/"
+    exit 1
+fi
+
+echo "Using Go: $(which go)"
+echo "Go version: $(go version)"
+echo ""
 
 # Pre-test cleanup
 echo "Pre-test cleanup..."
@@ -115,16 +140,53 @@ run_test "Verify architecture is correct (direct)" \
 run_test "Verify GOROOT is set correctly" \
     "go$TEST_VERSION env GOROOT | grep -q \"sdk/go$TEST_VERSION\""
 
-# Test 4: Reinstall over existing
-echo "=== TEST 4: Reinstall over existing ==="
+# Test 4: Set as default version
+echo "=== TEST 4: Set as default version ==="
+run_test "Set go$TEST_VERSION as default" \
+    "\"$INSTALL_SCRIPT\" set-default \"$TEST_VERSION\""
+
+run_test "Verify 'go' command points to go$TEST_VERSION" \
+    "go version | grep -q \"go$TEST_VERSION\""
+
+run_test "Verify default symlink exists" \
+    "test -L \"$HOME/go/bin/go\""
+
+run_test "Verify list shows default marker" \
+    "\"$INSTALL_SCRIPT\" list | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
+
+# Test 5: Install another version with --default flag
+echo "=== TEST 5: Install with --default flag ==="
+TEST_VERSION2="1.20.14"
+run_test "Install go$TEST_VERSION2 with --default flag" \
+    "\"$INSTALL_SCRIPT\" \"$TEST_VERSION2\" official --default"
+
+# Update PATH after installation
+update_path
+
+run_test "Verify go$TEST_VERSION2 is now default" \
+    "go version | grep -q \"go$TEST_VERSION2\""
+
+run_test "Verify list shows new default" \
+    "\"$INSTALL_SCRIPT\" list | grep -q \"go$TEST_VERSION2.*\[DEFAULT\]\""
+
+# Test 6: Uninstall default version
+echo "=== TEST 6: Uninstall default version ==="
+run_test "Uninstall default version go$TEST_VERSION2" \
+    "\"$UNINSTALL_SCRIPT\" \"$TEST_VERSION2\" | grep -q \"default symlink removed\""
+
+run_test "Verify default symlink is removed" \
+    "! test -L \"$HOME/go/bin/go\""
+
+# Test 7: Reinstall over existing
+echo "=== TEST 7: Reinstall over existing ==="
 run_test "Reinstall go$TEST_VERSION (should work)" \
     "echo 'y' | \"$INSTALL_SCRIPT\" \"$TEST_VERSION\" direct"
 
 # Update PATH after reinstallation
 update_path
 
-# Test 5: Final cleanup
-echo "=== TEST 5: Final cleanup ==="
+# Test 8: Final cleanup
+echo "=== TEST 8: Final cleanup ==="
 run_test "Final uninstall go$TEST_VERSION" \
     "\"$UNINSTALL_SCRIPT\" \"$TEST_VERSION\""
 
