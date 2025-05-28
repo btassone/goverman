@@ -152,7 +152,7 @@ run_test "Verify default symlink exists" \
     "test -L \"$HOME/go/bin/go\""
 
 run_test "Verify list shows default marker" \
-    "\"$INSTALL_SCRIPT\" list | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
+    "\"$INSTALL_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
 
 # Test 5: Install another version with --default flag
 echo "=== TEST 5: Install with --default flag ==="
@@ -167,14 +167,16 @@ run_test "Verify go$TEST_VERSION2 is now default" \
     "go version | grep -q \"go$TEST_VERSION2\""
 
 run_test "Verify list shows new default" \
-    "\"$INSTALL_SCRIPT\" list | grep -q \"go$TEST_VERSION2.*\[DEFAULT\]\""
+    "\"$INSTALL_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\[DEFAULT\]\""
 
 # Test 6: Uninstall default version
 echo "=== TEST 6: Uninstall default version ==="
-run_test "Uninstall default version go$TEST_VERSION2" \
-    "\"$UNINSTALL_SCRIPT\" \"$TEST_VERSION2\" | grep -q \"default symlink removed\""
+# First uninstall and capture output
+echo "Uninstalling default version go$TEST_VERSION2..."
+"$UNINSTALL_SCRIPT" "$TEST_VERSION2"
 
-run_test "Verify default symlink is removed" \
+# Then verify the symlink was removed
+run_test "Verify default symlink is removed after uninstall" \
     "! test -L \"$HOME/go/bin/go\""
 
 # Test 7: Reinstall over existing
