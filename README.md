@@ -15,10 +15,10 @@ Goverman helps developers who need to work with multiple Go versions by:
 
 ## Prerequisites
 
-- Bash shell
+- Bash-compatible shell (bash, zsh, fish, etc.)
 - curl or wget (for direct installation method)
 - Go 1.17+ (for official installation method)
-- Write permissions to `/usr/local/bin` or a directory in your PATH
+- Standard UNIX tools (tar, grep, sed)
 
 ## Installation
 
@@ -29,6 +29,21 @@ git clone https://github.com/yourusername/goverman.git
 cd goverman
 chmod +x *.sh
 ```
+
+## Shell Support
+
+Goverman automatically detects your shell and adds the Go binary path to the appropriate configuration file:
+
+- **Bash**: Updates `~/.bashrc` or `~/.bash_profile`
+- **Zsh**: Updates `~/.zshrc` or `~/.zprofile`
+- **Fish**: Updates `~/.config/fish/config.fish`
+- **Other shells**: Falls back to `~/.profile`
+
+The installer will:
+1. Detect your default shell from the `$SHELL` environment variable
+2. Show which shell was detected
+3. Prompt you to add the PATH to the correct profile file
+4. Provide instructions to apply changes immediately
 
 ## Usage
 

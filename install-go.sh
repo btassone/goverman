@@ -87,14 +87,23 @@ check_go_installed() {
 detect_shell() {
     local shell_name=""
     
-    # First try to detect from SHELL environment variable
+    # Use the SHELL environment variable which represents the user's default shell
+    # This is more reliable than checking the current process since the script
+    # runs in bash regardless of the user's shell
     if [[ -n "$SHELL" ]]; then
         shell_name=$(basename "$SHELL")
-    fi
-    
-    # If that fails, try to detect from current process
-    if [[ -z "$shell_name" ]]; then
-        shell_name=$(ps -p $$ -o comm= 2>/dev/null | sed 's/^-//')
+    else
+        # Fallback: check passwd file for user's default shell
+        local user_shell=$(getent passwd "$USER" | cut -d: -f7)
+        if [[ -n "$user_shell" ]]; then
+            shell_name=$(basename "$user_shell")
+        else
+            # Last resort: try parent process
+            local ppid_shell=$(ps -p $PPID -o comm= 2>/dev/null | sed 's/^-//')
+            if [[ -n "$ppid_shell" ]]; then
+                shell_name="$ppid_shell"
+            fi
+        fi
     fi
     
     echo "$shell_name"
@@ -154,6 +163,7 @@ add_to_shell_profile() {
     fi
     
     echo "" >&2
+    echo "Detected shell: $shell_name" >&2
     echo "Would you like to add $gobin to your PATH permanently?" >&2
     echo "This will add the following line to $profile_file:" >&2
     echo "  $path_export_line" >&2

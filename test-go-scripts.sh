@@ -87,6 +87,40 @@ echo "Using Go: $(which go)"
 echo "Go version: $(go version)"
 echo ""
 
+# Test shell detection
+echo "Testing shell detection..."
+echo "========================="
+# Source the detect_shell function from install script
+detect_shell() {
+    local shell_name=""
+    if [[ -n "$SHELL" ]]; then
+        shell_name=$(basename "$SHELL")
+    else
+        local user_shell=$(getent passwd "$USER" | cut -d: -f7)
+        if [[ -n "$user_shell" ]]; then
+            shell_name=$(basename "$user_shell")
+        else
+            local ppid_shell=$(ps -p $PPID -o comm= 2>/dev/null | sed 's/^-//')
+            if [[ -n "$ppid_shell" ]]; then
+                shell_name="$ppid_shell"
+            fi
+        fi
+    fi
+    echo "$shell_name"
+}
+
+DETECTED_SHELL=$(detect_shell)
+echo "Detected shell: $DETECTED_SHELL"
+echo "SHELL env var: $SHELL"
+
+# Verify shell detection is reasonable
+if [[ -z "$DETECTED_SHELL" ]]; then
+    echo "Warning: Could not detect shell"
+elif [[ "$DETECTED_SHELL" != "bash" && "$DETECTED_SHELL" != "zsh" && "$DETECTED_SHELL" != "fish" && "$DETECTED_SHELL" != "sh" ]]; then
+    echo "Warning: Detected unusual shell: $DETECTED_SHELL"
+fi
+echo ""
+
 # Pre-test cleanup
 echo "Pre-test cleanup..."
 if command_exists "go$TEST_VERSION"; then
