@@ -392,6 +392,131 @@ verify_installation() {
     fi
 }
 
+# Function to analyze PATH and detect conflicting Go installations
+analyze_path_for_go() {
+    local gobin="$1"
+    local issues_found=false
+    local gobin_position=-1
+    local conflicting_positions=""
+    local position=1
+    
+    # Find position of gobin and any conflicting Go installations
+    IFS=':' read -ra PATH_ARRAY <<< "$PATH"
+    for dir in "${PATH_ARRAY[@]}"; do
+        if [[ "$dir" == "$gobin" ]]; then
+            gobin_position=$position
+        elif [[ -x "$dir/go" ]] && [[ "$dir" != "$gobin" ]]; then
+            # Found another go binary
+            if [[ $gobin_position -eq -1 ]] || [[ $position -lt $gobin_position ]]; then
+                conflicting_positions="$conflicting_positions $position:$dir"
+                issues_found=true
+            fi
+        elif [[ "$dir" == "/opt/homebrew/bin" ]] && [[ -x "/opt/homebrew/bin/go" ]]; then
+            # Special case for Homebrew on Apple Silicon
+            if [[ $gobin_position -eq -1 ]] || [[ $position -lt $gobin_position ]]; then
+                conflicting_positions="$conflicting_positions $position:$dir"
+                issues_found=true
+            fi
+        elif [[ "$dir" == "/usr/local/bin" ]] && [[ -x "/usr/local/bin/go" ]]; then
+            # Special case for Homebrew on Intel or other installs
+            if [[ $gobin_position -eq -1 ]] || [[ $position -lt $gobin_position ]]; then
+                conflicting_positions="$conflicting_positions $position:$dir"
+                issues_found=true
+            fi
+        fi
+        position=$((position + 1))
+    done
+    
+    echo "$issues_found|$gobin_position|$conflicting_positions"
+}
+
+# Function to fix PATH ordering
+fix_path_ordering() {
+    local gobin="$1"
+    local profile_file=$(get_shell_profile)
+    local shell_name=$(detect_shell)
+    
+    # Get detailed PATH analysis
+    local path_analysis=$(analyze_path_for_go "$gobin")
+    local conflicting_positions=$(echo "$path_analysis" | cut -d'|' -f3)
+    
+    echo "" >&2
+    echo "PATH Ordering Fix" >&2
+    echo "=================" >&2
+    echo "" >&2
+    echo "Detected issues with PATH ordering:" >&2
+    echo "- $gobin needs to come before other Go installations" >&2
+    echo "" >&2
+    echo "Conflicting Go installations found:" >&2
+    for conflict in $conflicting_positions; do
+        local pos=$(echo "$conflict" | cut -d':' -f1)
+        local dir=$(echo "$conflict" | cut -d':' -f2)
+        echo "  Position $pos: $dir" >&2
+        if [[ -x "$dir/go" ]]; then
+            local go_ver=$("$dir/go" version 2>/dev/null | awk '{print $3}' || echo "unknown")
+            echo "    └─ $go_ver" >&2
+        fi
+    done
+    echo "" >&2
+    echo "Would you like to fix this by prepending $gobin to your PATH?" >&2
+    echo "This will update $profile_file" >&2
+    read -p "Fix PATH ordering? (y/N): " -n 1 -r
+    echo >&2
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Remove any existing goverman PATH entries
+        if [[ -f "$profile_file" ]]; then
+            # Create backup
+            cp "$profile_file" "$profile_file.backup.$(date +%s)"
+            
+            # Remove existing goverman entries
+            grep -v "# Added by goverman" "$profile_file" > "$profile_file.tmp"
+            grep -v "export PATH=\"$gobin:\$PATH\"" "$profile_file.tmp" > "$profile_file"
+            rm -f "$profile_file.tmp"
+        fi
+        
+        # Add new PATH entry at the beginning of the file (after shebang if present)
+        local temp_file=$(mktemp)
+        local path_export_line="export PATH=\"$gobin:\$PATH\""
+        local path_marker="# Added by goverman"
+        
+        # Check if file starts with shebang
+        if [[ -f "$profile_file" ]] && head -n1 "$profile_file" | grep -q "^#!"; then
+            # Keep shebang, add PATH after it
+            head -n1 "$profile_file" > "$temp_file"
+            echo "" >> "$temp_file"
+            echo "$path_marker" >> "$temp_file"
+            echo "$path_export_line" >> "$temp_file"
+            tail -n +2 "$profile_file" >> "$temp_file"
+        else
+            # Add PATH at the very beginning
+            echo "$path_marker" > "$temp_file"
+            echo "$path_export_line" >> "$temp_file"
+            if [[ -f "$profile_file" ]]; then
+                echo "" >> "$temp_file"
+                cat "$profile_file" >> "$temp_file"
+            fi
+        fi
+        
+        mv "$temp_file" "$profile_file"
+        
+        echo "✓ Updated $profile_file to prioritize $gobin" >&2
+        echo "" >&2
+        echo "To apply changes in the current session, run:" >&2
+        echo "  source $profile_file" >&2
+        echo "" >&2
+        
+        # Also update current session
+        export PATH="$gobin:$PATH"
+        echo "✓ Updated PATH for current session" >&2
+        
+        return 0
+    else
+        echo "Skipped PATH fix. You may need to manually adjust your PATH." >&2
+        return 1
+    fi
+}
+
 # Function to set a Go version as default
 set_default_version() {
     local version="$1"
@@ -432,7 +557,31 @@ set_default_version() {
     echo "" >&2
     echo "Verification:" >&2
     echo "  which go: $(which go)" >&2
-    echo "  go version: $(go version 2>/dev/null || echo "failed")" >&2
+    local actual_go_version=$(go version 2>/dev/null || echo "failed")
+    echo "  go version: $actual_go_version" >&2
+    
+    # Check if the PATH ordering is causing issues
+    local expected_go_path="$gobin/go"
+    local actual_go_path=$(which go 2>/dev/null)
+    
+    if [[ "$actual_go_path" != "$expected_go_path" ]]; then
+        echo "" >&2
+        echo "⚠️  WARNING: The 'go' command is not using the goverman-managed version!" >&2
+        echo "  Expected: $expected_go_path" >&2
+        echo "  Actual: $actual_go_path" >&2
+        
+        # Analyze PATH for issues
+        local path_analysis=$(analyze_path_for_go "$gobin")
+        local issues_found=$(echo "$path_analysis" | cut -d'|' -f1)
+        
+        if [[ "$issues_found" == "true" ]]; then
+            echo "" >&2
+            echo "This is because another Go installation appears earlier in your PATH." >&2
+            
+            # Offer to fix
+            fix_path_ordering "$gobin"
+        fi
+    fi
     
     return 0
 }
