@@ -478,31 +478,24 @@ fix_path_ordering() {
             rm -f "$temp_clean"
         fi
         
-        # Add new PATH entry at the beginning of the file (after shebang if present)
-        local temp_file=$(mktemp)
+        # Add new PATH entry at the END of the file
         local path_export_line="export PATH=\"$gobin:\$PATH\""
         local path_marker="# Added by goverman"
         
-        # Check if file starts with shebang
-        if [[ -f "$profile_file" ]] && head -n1 "$profile_file" | grep -q "^#!"; then
-            # Keep shebang, add PATH after it
-            head -n1 "$profile_file" > "$temp_file"
-            echo "" >> "$temp_file"
-            echo "$path_marker" >> "$temp_file"
-            echo "$path_export_line" >> "$temp_file"
-            echo "" >> "$temp_file"
-            tail -n +2 "$profile_file" >> "$temp_file"
-        else
-            # Add PATH at the very beginning
-            echo "$path_marker" > "$temp_file"
-            echo "$path_export_line" >> "$temp_file"
-            if [[ -f "$profile_file" ]]; then
-                echo "" >> "$temp_file"
-                cat "$profile_file" >> "$temp_file"
-            fi
+        # Append to the end of the file
+        if [[ ! -f "$profile_file" ]]; then
+            touch "$profile_file"
         fi
         
-        mv "$temp_file" "$profile_file"
+        # Add a newline if the file doesn't end with one
+        if [[ -s "$profile_file" ]] && [[ $(tail -c 1 "$profile_file" | wc -l) -eq 0 ]]; then
+            echo "" >> "$profile_file"
+        fi
+        
+        # Add the PATH export at the end
+        echo "" >> "$profile_file"
+        echo "$path_marker" >> "$profile_file"
+        echo "$path_export_line" >> "$profile_file"
         
         echo "✓ Updated $profile_file to prioritize $gobin" >&2
         echo "" >&2
