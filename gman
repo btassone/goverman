@@ -13,6 +13,9 @@
 
 set -e
 
+# Version information
+GMAN_VERSION="v1.3.1"
+
 # Function to display usage
 show_usage() {
     echo "gman - Go Version Manager (goverman)"
@@ -24,6 +27,7 @@ show_usage() {
     echo "  uninstall <version>                      Uninstall a Go version"
     echo "  list                                     List installed Go versions"
     echo "  set-default <version>                    Set a version as the default 'go' command"
+    echo "  version                                  Show gman version"
     echo "  help                                     Show this help message"
     echo ""
     echo "Install options:"
@@ -42,7 +46,23 @@ show_usage() {
     echo "  gman uninstall 1.21.5                    # Uninstall a Go version"
     echo "  gman set-default 1.21.5                  # Set existing version as default"
     echo "  gman list                                # List all installed versions"
+    echo "  gman version                             # Show gman version"
     exit 0
+}
+
+# Function to show version
+show_version() {
+    # Try to get version from git if in a git repository
+    if [[ -d .git ]] || git rev-parse --git-dir > /dev/null 2>&1; then
+        local git_version=$(git describe --tags --always --dirty 2>/dev/null)
+        if [[ -n "$git_version" ]]; then
+            echo "gman $git_version"
+        else
+            echo "gman $GMAN_VERSION"
+        fi
+    else
+        echo "gman $GMAN_VERSION"
+    fi
 }
 
 # Function to detect architecture
@@ -1034,6 +1054,9 @@ main() {
                 show_usage
             fi
             set_default_version "$1"
+            ;;
+        version|-v|--version)
+            show_version
             ;;
         help|-h|--help)
             show_usage
