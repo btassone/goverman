@@ -350,19 +350,13 @@ install_direct() {
     
     # Create wrapper binary
     echo "Creating wrapper binary..."
-    cat > "$gobin/$go_binary" << 'EOF'
-#!/bin/bash
-export GOROOT="INSTALL_DIR_PLACEHOLDER"
-exec "INSTALL_DIR_PLACEHOLDER/bin/go" "$@"
-EOF
     
-    # Replace placeholder with actual path
-    # Use different sed syntax for macOS vs Linux
-    if [[ "$OS" == "darwin" ]]; then
-        sed -i '' "s|INSTALL_DIR_PLACEHOLDER|$install_dir|g" "$gobin/$go_binary"
-    else
-        sed -i "s|INSTALL_DIR_PLACEHOLDER|$install_dir|g" "$gobin/$go_binary"
-    fi
+    # Create the wrapper script with the actual path directly
+    cat > "$gobin/$go_binary" << EOF
+#!/bin/bash
+export GOROOT="$install_dir"
+exec "$install_dir/bin/go" "\$@"
+EOF
     
     chmod +x "$gobin/$go_binary"
     echo "✓ Wrapper binary created: $gobin/$go_binary"
