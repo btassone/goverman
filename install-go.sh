@@ -444,7 +444,7 @@ list_installed_versions() {
     echo "============================="
     
     local found_versions=0
-    declare -A seen_versions  # Track versions we've already seen
+    local seen_versions=""  # Track versions we've already seen (space-separated list)
     
     # Get gobin directory
     local gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
@@ -512,10 +512,10 @@ list_installed_versions() {
                     local version_name=$(basename "$binary")
                     if [[ "$version_name" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                         # Skip if we've already seen this version
-                        if [[ -n "${seen_versions[$version_name]}" ]]; then
+                        if [[ " $seen_versions " == *" $version_name "* ]]; then
                             continue
                         fi
-                        seen_versions[$version_name]=1
+                        seen_versions="$seen_versions $version_name "
                         
                         local version_info=$("$binary" version 2>/dev/null || echo "unknown")
                         local goroot_info=$("$binary" env GOROOT 2>/dev/null || echo "unknown")
@@ -547,7 +547,7 @@ list_installed_versions() {
                 local version_name=$(basename "$sdk_dir")
                 if [[ "$version_name" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                     # Check if we already found a binary for this version
-                    if [[ -z "${seen_versions[$version_name]}" ]]; then
+                    if [[ " $seen_versions " != *" $version_name "* ]]; then
                         if [[ "$orphaned_found" == "false" ]]; then
                             echo "SDK installations without wrapper binaries:"
                             echo "-------------------------------------------"
