@@ -8,9 +8,10 @@ on:
 
 jobs:
   test:
+    name: Test on ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04, macos-latest, macos-13, macos-12, windows-latest]
     runs-on: ${{ matrix.os }}
     
     steps:
@@ -23,9 +24,20 @@ jobs:
     
     - name: Make scripts executable
       run: chmod +x gman test-go-scripts.sh test-path-setup.sh
+      if: runner.os != 'Windows'
     
-    - name: Run PATH setup tests
+    - name: Run PATH setup tests (Unix)
       run: ./test-path-setup.sh
+      if: runner.os != 'Windows'
     
-    - name: Run installation tests
+    - name: Run installation tests (Unix)
       run: ./test-go-scripts.sh
+      if: runner.os != 'Windows'
+    
+    - name: Run PATH setup tests (Windows)
+      run: bash ./test-path-setup.sh
+      if: runner.os == 'Windows'
+    
+    - name: Run installation tests (Windows)
+      run: bash ./test-go-scripts.sh
+      if: runner.os == 'Windows'
