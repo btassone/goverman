@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# Go Scripts Test Suite
-# Tests both install and uninstall scripts
+# gman Test Suite
+# Tests the gman tool functionality
 
 set -e
 
 TEST_VERSION="1.21.5"  # Use an older version for testing
 SCRIPT_DIR="$(dirname "$0")"
-INSTALL_SCRIPT="$SCRIPT_DIR/install-go.sh"
-UNINSTALL_SCRIPT="$SCRIPT_DIR/uninstall-go.sh"
+GMAN_SCRIPT="$SCRIPT_DIR/gman"
 
-echo "Go Scripts Test Suite"
-echo "===================="
+echo "gman Test Suite"
+echo "==============="
 echo "Test version: $TEST_VERSION"
 echo "Date: $(date)"
 echo ""
@@ -125,14 +124,14 @@ echo ""
 echo "Pre-test cleanup..."
 if command_exists "go$TEST_VERSION"; then
     echo "Removing existing go$TEST_VERSION..."
-    "$UNINSTALL_SCRIPT" "$TEST_VERSION" || true
+    "$GMAN_SCRIPT" uninstall "$TEST_VERSION" || true
 fi
 echo ""
 
 # Test 1: Install with official method
 echo "=== TEST 1: Install with official method ==="
 run_test "Install go$TEST_VERSION (official)" \
-    "\"$INSTALL_SCRIPT\" \"$TEST_VERSION\" official"
+    "\"$GMAN_SCRIPT\" install \"$TEST_VERSION\" official"
 
 # Update PATH after installation
 update_path
@@ -149,7 +148,7 @@ run_test "Verify architecture is correct" \
 # Test 2: Uninstall
 echo "=== TEST 2: Uninstall ==="
 run_test "Uninstall go$TEST_VERSION" \
-    "\"$UNINSTALL_SCRIPT\" \"$TEST_VERSION\""
+    "\"$GMAN_SCRIPT\" uninstall \"$TEST_VERSION\""
 
 run_test "Verify go$TEST_VERSION is removed" \
     "! command_exists \"go$TEST_VERSION\""
@@ -157,7 +156,7 @@ run_test "Verify go$TEST_VERSION is removed" \
 # Test 3: Install with direct method
 echo "=== TEST 3: Install with direct method ==="
 run_test "Install go$TEST_VERSION (direct)" \
-    "\"$INSTALL_SCRIPT\" \"$TEST_VERSION\" direct"
+    "\"$GMAN_SCRIPT\" install \"$TEST_VERSION\" direct"
 
 # Update PATH after installation
 update_path
@@ -177,7 +176,7 @@ run_test "Verify GOROOT is set correctly" \
 # Test 4: Set as default version
 echo "=== TEST 4: Set as default version ==="
 run_test "Set go$TEST_VERSION as default" \
-    "\"$INSTALL_SCRIPT\" set-default \"$TEST_VERSION\""
+    "\"$GMAN_SCRIPT\" set-default \"$TEST_VERSION\""
 
 run_test "Verify 'go' command points to go$TEST_VERSION" \
     "go version | grep -q \"go$TEST_VERSION\""
@@ -186,13 +185,13 @@ run_test "Verify default symlink exists" \
     "test -L \"$HOME/go/bin/go\""
 
 run_test "Verify list shows default marker" \
-    "\"$INSTALL_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
+    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
 
 # Test 5: Install another version with --default flag
 echo "=== TEST 5: Install with --default flag ==="
 TEST_VERSION2="1.20.14"
 run_test "Install go$TEST_VERSION2 with --default flag" \
-    "\"$INSTALL_SCRIPT\" \"$TEST_VERSION2\" official --default"
+    "\"$GMAN_SCRIPT\" install \"$TEST_VERSION2\" official --default"
 
 # Update PATH after installation
 update_path
@@ -201,13 +200,13 @@ run_test "Verify go$TEST_VERSION2 is now default" \
     "go version | grep -q \"go$TEST_VERSION2\""
 
 run_test "Verify list shows new default" \
-    "\"$INSTALL_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\[DEFAULT\]\""
+    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\[DEFAULT\]\""
 
 # Test 6: Uninstall default version
 echo "=== TEST 6: Uninstall default version ==="
 # First uninstall and capture output
 echo "Uninstalling default version go$TEST_VERSION2..."
-"$UNINSTALL_SCRIPT" "$TEST_VERSION2"
+"$GMAN_SCRIPT" uninstall "$TEST_VERSION2"
 
 # Then verify the symlink was removed
 run_test "Verify default symlink is removed after uninstall" \
@@ -216,7 +215,7 @@ run_test "Verify default symlink is removed after uninstall" \
 # Test 7: Reinstall over existing
 echo "=== TEST 7: Reinstall over existing ==="
 run_test "Reinstall go$TEST_VERSION (should work)" \
-    "echo 'y' | \"$INSTALL_SCRIPT\" \"$TEST_VERSION\" direct"
+    "echo 'y' | \"$GMAN_SCRIPT\" install \"$TEST_VERSION\" direct"
 
 # Update PATH after reinstallation
 update_path
@@ -224,10 +223,10 @@ update_path
 # Test 8: Final cleanup
 echo "=== TEST 8: Final cleanup ==="
 run_test "Final uninstall go$TEST_VERSION" \
-    "\"$UNINSTALL_SCRIPT\" \"$TEST_VERSION\""
+    "\"$GMAN_SCRIPT\" uninstall \"$TEST_VERSION\""
 
 echo "================================"
 echo "🎉 All tests completed successfully!"
-echo "Both install and uninstall scripts are working properly."
+echo "The gman tool is working properly."
 echo ""
-echo "The scripts are ready for production use."
+echo "gman is ready for production use."

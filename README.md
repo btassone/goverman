@@ -2,7 +2,7 @@
 
 [![Test Go Scripts](https://github.com/btassone/goverman/actions/workflows/test.yml/badge.svg)](https://github.com/btassone/goverman/actions/workflows/test.yml)
 
-A simple Go version manager that allows you to install and manage multiple Go versions on your system. Goverman provides bash scripts to easily install, uninstall, and switch between different Go versions without affecting your system's default Go installation.
+A simple Go version manager that allows you to install and manage multiple Go versions on your system. Goverman provides a unified tool called `gman` to easily install, uninstall, and switch between different Go versions without affecting your system's default Go installation.
 
 ## Overview
 
@@ -27,7 +27,7 @@ Clone this repository:
 ```bash
 git clone https://github.com/yourusername/goverman.git
 cd goverman
-chmod +x *.sh
+chmod +x gman
 ```
 
 ## Shell Support
@@ -47,37 +47,59 @@ The installer will:
 
 ## Usage
 
-### Installing a Go Version
-
-The install script supports two installation methods:
-
-#### Official Method (default)
-Uses `go install` to download and install Go versions:
+The `gman` tool provides all functionality through a single command:
 
 ```bash
-./install-go.sh 1.23.9
+gman <command> [options]
 ```
 
-#### Direct Method
-Downloads Go binaries directly from the official Go website:
+### Commands
 
+#### Installing a Go Version
+
+The install command supports two installation methods:
+
+**Official Method (default)** - Uses `go install` to download and install Go versions:
 ```bash
-./install-go.sh 1.23.9 direct
+gman install 1.23.9
+```
+
+**Direct Method** - Downloads Go binaries directly from the official Go website:
+```bash
+gman install 1.23.9 direct
+```
+
+**Install and Set as Default** - Install a version and set it as the default `go` command:
+```bash
+gman install 1.23.9 --default
+```
+
+#### Uninstalling a Go Version
+
+Remove a specific Go version:
+```bash
+gman uninstall 1.23.9
 ```
 
 #### List Installed Versions
-View all Go versions installed by goverman:
 
+View all Go versions installed by goverman:
 ```bash
-./install-go.sh list
+gman list
 ```
 
-### Uninstalling a Go Version
+#### Set Default Version
 
-Remove a specific Go version:
-
+Set an installed version as the default `go` command:
 ```bash
-./uninstall-go.sh 1.23.9
+gman set-default 1.23.9
+```
+
+#### Help
+
+Show usage information:
+```bash
+gman help
 ```
 
 ### Using Installed Go Versions
@@ -93,9 +115,9 @@ go1.23.9 build ./...
 go1.23.9 test ./...
 ```
 
-### Testing the Scripts
+### Testing gman
 
-Run the automated test suite to verify the scripts work correctly:
+Run the automated test suite to verify gman works correctly:
 
 ```bash
 ./test-go-scripts.sh
@@ -105,24 +127,27 @@ The test script will:
 - Test both installation methods
 - Verify correct version installation
 - Test reinstallation scenarios
+- Test the set-default functionality
 - Clean up test installations
 
 ## How It Works
 
-1. **install-go.sh**: 
-   - Creates versioned Go binaries (e.g., `go1.23.9`)
-   - Installs to `$GOBIN` or `$GOPATH/bin` or `/usr/local/bin`
-   - Sets up PATH if needed
-   - Supports multiple architectures automatically
+1. **gman**: A unified tool that combines all functionality:
+   - **install**: Creates versioned Go binaries (e.g., `go1.23.9`)
+     - Installs to `$GOBIN` or `$GOPATH/bin`
+     - Sets up PATH if needed
+     - Supports multiple architectures automatically
+     - Can optionally set the installed version as default
+   - **uninstall**: Removes the versioned binary and cleans up the associated GOROOT directory
+   - **list**: Shows all installed Go versions and identifies the default
+   - **set-default**: Creates a symlink to use a specific version as the default `go` command
+   - **help**: Shows usage information
 
-2. **uninstall-go.sh**:
-   - Removes the versioned binary
-   - Cleans up the associated GOROOT directory
-   - Preserves other Go installations
-
-3. **test-go-scripts.sh**:
-   - Automated testing of install/uninstall functionality
-   - Ensures scripts work correctly across different scenarios
+2. **test-go-scripts.sh**:
+   - Automated testing of gman functionality
+   - Tests install/uninstall operations
+   - Verifies set-default functionality
+   - Ensures gman works correctly across different scenarios
 
 ## Supported Platforms
 

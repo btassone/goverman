@@ -1,26 +1,34 @@
 #!/bin/bash
 
-# Go Version Installer Script
-# Usage: ./install_go_version.sh [version] [method]
-# Example: ./install_go_version.sh 1.23.9
-# Example: ./install_go_version.sh 1.23.9 direct
+# gman - Go Version Manager (goverman)
+# A unified tool for managing multiple Go versions
+# 
+# Usage: gman <command> [options]
+# Commands:
+#   install <version> [method] [--default]   Install a Go version
+#   uninstall <version>                      Uninstall a Go version
+#   list                                     List installed Go versions
+#   set-default <version>                    Set a version as the default 'go' command
+#   help                                     Show this help message
 
 set -e
 
 # Function to display usage
 show_usage() {
-    echo "Usage: $0 <command> [options]"
+    echo "gman - Go Version Manager (goverman)"
+    echo ""
+    echo "Usage: gman <command> [options]"
     echo ""
     echo "Commands:"
-    echo "  <version> [method] [--default]   Install a Go version"
-    echo "  set-default <version>            Set a version as the default 'go' command"
-    echo "  list                             List installed Go versions"
+    echo "  install <version> [method] [--default]   Install a Go version"
+    echo "  uninstall <version>                      Uninstall a Go version"
+    echo "  list                                     List installed Go versions"
+    echo "  set-default <version>                    Set a version as the default 'go' command"
+    echo "  help                                     Show this help message"
     echo ""
-    echo "Arguments:"
-    echo "  version    Go version to install/set (e.g., 1.23.9, 1.21.5)"
+    echo "Install options:"
+    echo "  version    Go version to install (e.g., 1.23.9, 1.21.5)"
     echo "  method     Installation method: 'official' (default) or 'direct'"
-    echo ""
-    echo "Options:"
     echo "  --default  Set this version as the default 'go' command after installation"
     echo ""
     echo "Methods:"
@@ -28,12 +36,13 @@ show_usage() {
     echo "  direct     Download and extract binary directly (fallback for ARM64 issues)"
     echo ""
     echo "Examples:"
-    echo "  $0 1.23.9                        # Install using official method"
-    echo "  $0 1.23.9 direct                 # Install using direct binary download"
-    echo "  $0 1.21.5 official --default     # Install and set as default"
-    echo "  $0 set-default 1.21.5            # Set existing version as default"
-    echo "  $0 list                          # List all installed versions"
-    exit 1
+    echo "  gman install 1.23.9                      # Install using official method"
+    echo "  gman install 1.23.9 direct               # Install using direct binary download"
+    echo "  gman install 1.21.5 official --default   # Install and set as default"
+    echo "  gman uninstall 1.21.5                    # Uninstall a Go version"
+    echo "  gman set-default 1.21.5                  # Set existing version as default"
+    echo "  gman list                                # List all installed versions"
+    exit 0
 }
 
 # Function to detect architecture
@@ -242,7 +251,7 @@ install_official() {
             echo "✓ Installation successful with CGO disabled"
         else
             echo "Error: Official installation method failed"
-            echo "Try using the direct method: $0 $version direct"
+            echo "Try using the direct method: gman install $version direct"
             exit 1
         fi
     fi
@@ -526,7 +535,7 @@ set_default_version() {
     # Check if the version exists
     if ! command -v "$go_binary" >/dev/null 2>&1; then
         echo "Error: Go version $version is not installed" >&2
-        echo "Run '$0 $version' to install it first" >&2
+        echo "Run 'gman install $version' to install it first" >&2
         return 1
     fi
     
@@ -744,53 +753,183 @@ list_installed_versions() {
         echo "  go1.21.5 version         # Use specific version"
         echo ""
         echo "To uninstall a version:"
-        echo "  ./uninstall-go.sh 1.21.5"
+        echo "  gman uninstall 1.21.5"
     else
         echo "To install additional Go versions:"
-        echo "  $0 1.23.9         # Install using official method"
-        echo "  $0 1.23.9 direct  # Install using direct method"
+        echo "  gman install 1.23.9         # Install using official method"
+        echo "  gman install 1.23.9 direct  # Install using direct method"
     fi
 }
 
-# Main script logic
-main() {
+# Function to safely remove directory
+safe_remove_dir() {
+    local dir="$1"
+    if [[ -d "$dir" ]]; then
+        # Additional safety check - make sure it's a Go directory
+        if [[ "$dir" == *"/go"* ]] || [[ "$dir" == *"/sdk/go"* ]] || [[ -f "$dir/bin/go" ]]; then
+            echo "Removing directory: $dir"
+            rm -rf "$dir"
+            echo "✓ Directory removed"
+        else
+            echo "Warning: Directory doesn't appear to be a Go installation: $dir"
+            echo "Skipping removal for safety"
+        fi
+    else
+        echo "Directory not found: $dir"
+    fi
+}
+
+# Function to safely remove binary
+safe_remove_binary() {
+    local binary="$1"
+    if [[ -f "$binary" ]]; then
+        echo "Removing binary: $binary"
+        rm -f "$binary"
+        echo "✓ Binary removed"
+    else
+        echo "Binary not found: $binary"
+    fi
+}
+
+# Function to check and handle default symlink
+check_default_symlink() {
+    local version="$1"
+    local go_binary="go${version}"
+    local gobin="$2"
+    local go_link="$gobin/go"
+    
+    if [[ -L "$go_link" ]]; then
+        local link_target=$(readlink "$go_link" | xargs basename)
+        if [[ "$link_target" == "$go_binary" ]]; then
+            echo ""
+            echo "Warning: This version is currently set as the default 'go' command"
+            echo "Removing the default symlink..."
+            rm -f "$go_link"
+            echo "✓ Default symlink removed"
+            echo ""
+            echo "Note: You'll need to set another version as default or the system Go will be used"
+            echo "Run: gman set-default <version> to set a new default"
+        fi
+    fi
+}
+
+# Function to uninstall a Go version
+uninstall_version() {
+    local VERSION="$1"
+    local GO_BINARY="go${VERSION}"
+    
+    echo "Uninstalling Go version ${VERSION}..."
+    echo "======================================="
+    
+    # Step 1: Check if the go binary exists and get its GOROOT
+    echo "Step 1: Checking for Go binary and getting GOROOT..."
+    
+    # Find the binary in common locations
+    local BINARY_PATH=""
+    local SEARCH_LOCATIONS=(
+        "$HOME/go/bin/$GO_BINARY"
+        "/usr/local/bin/$GO_BINARY"
+        "$HOME/.local/bin/$GO_BINARY"
+    )
+    
+    # Add GOBIN and GOPATH locations if Go is available
+    if command -v go >/dev/null 2>&1; then
+        local GOBIN_PATH=$(go env GOBIN 2>/dev/null || echo "")
+        local GOPATH_PATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        
+        if [[ -n "$GOBIN_PATH" ]]; then
+            SEARCH_LOCATIONS=("$GOBIN_PATH/$GO_BINARY" "${SEARCH_LOCATIONS[@]}")
+        fi
+        
+        if [[ -n "$GOPATH_PATH" ]]; then
+            SEARCH_LOCATIONS=("$GOPATH_PATH/bin/$GO_BINARY" "${SEARCH_LOCATIONS[@]}")
+        fi
+    fi
+    
+    # Search for the binary
+    for location in "${SEARCH_LOCATIONS[@]}"; do
+        if [[ -f "$location" ]]; then
+            BINARY_PATH="$location"
+            break
+        fi
+    done
+    
+    if [[ -z "$BINARY_PATH" ]]; then
+        echo "Warning: Go binary '$GO_BINARY' not found in common locations"
+        echo "Searched in:"
+        for location in "${SEARCH_LOCATIONS[@]}"; do
+            echo "  - $location"
+        done
+        echo ""
+        echo "You may need to manually locate and remove the binary."
+    else
+        echo "Found binary: $BINARY_PATH"
+        
+        # Step 2: Get GOROOT from the binary
+        echo ""
+        echo "Step 2: Getting GOROOT..."
+        
+        if GOROOT_PATH=$("$BINARY_PATH" env GOROOT 2>/dev/null); then
+            echo "GOROOT: $GOROOT_PATH"
+            
+            # Step 3: Remove the GOROOT directory
+            echo ""
+            echo "Step 3: Removing Go installation directory..."
+            safe_remove_dir "$GOROOT_PATH"
+        else
+            echo "Warning: Could not get GOROOT from $GO_BINARY"
+            echo "The Go installation directory may need to be removed manually."
+        fi
+        
+        # Check if this version is set as default
+        local GOBIN_DIR=$(dirname "$BINARY_PATH")
+        check_default_symlink "$VERSION" "$GOBIN_DIR"
+        
+        # Step 4: Remove the binary
+        echo ""
+        echo "Step 4: Removing Go binary..."
+        safe_remove_binary "$BINARY_PATH"
+    fi
+    
+    echo ""
+    echo "======================================="
+    echo "Uninstallation process completed!"
+    echo ""
+    
+    # Step 5: Verification
+    echo "Step 5: Verification..."
+    echo "Checking if $GO_BINARY is still accessible..."
+    
+    if command -v "$GO_BINARY" >/dev/null 2>&1; then
+        echo "⚠️  Warning: $GO_BINARY is still accessible. You may need to:"
+        echo "   - Check your PATH environment variable"
+        echo "   - Restart your terminal"
+        echo "   - Look for additional installations in other locations"
+    else
+        echo "✓ $GO_BINARY is no longer accessible"
+    fi
+    
+    echo ""
+    echo "Note: If you have multiple Go installations, make sure to check:"
+    echo "  - /usr/local/go (system-wide installation)"
+    echo "  - ~/go-versions/ (custom installations)"
+    echo "  - Other custom installation directories"
+}
+
+# Command: install
+cmd_install() {
     # Save original PATH before any modifications
     export ORIGINAL_PATH="$PATH"
     
-    # Check arguments
-    if [[ $# -eq 0 ]]; then
-        echo "Error: No command specified"
-        echo ""
-        list_installed_versions
-        echo ""
-        show_usage
-    fi
-    
-    local command="$1"
-    
-    # Handle special commands
-    case "$command" in
-        list)
-            list_installed_versions
-            exit 0
-            ;;
-        set-default)
-            if [[ -z "$2" ]]; then
-                echo "Error: No version specified for set-default"
-                show_usage
-            fi
-            set_default_version "$2"
-            exit $?
-            ;;
-        -h|--help|help)
-            show_usage
-            ;;
-    esac
-    
-    # If not a special command, assume it's a version to install
-    local version="$command"
+    local version="$1"
     local method="official"
     local set_default=false
+    
+    # Validate version format
+    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Invalid version format '$version'. Use format like '1.23.9'"
+        exit 1
+    fi
     
     # Parse remaining arguments
     shift
@@ -809,12 +948,6 @@ main() {
         esac
         shift
     done
-    
-    # Validate version format
-    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "Error: Invalid version format '$version'. Use format like '1.23.9'"
-        exit 1
-    fi
     
     echo "Go Version Installer"
     echo "==================="
@@ -865,12 +998,53 @@ main() {
     fi
 }
 
-# Handle special arguments
-case "${1:-}" in
-    -h|--help|help)
+# Main function
+main() {
+    # Check if no arguments provided
+    if [[ $# -eq 0 ]]; then
+        echo "Error: No command specified"
+        echo ""
         show_usage
-        ;;
-    *)
-        main "$@"
-        ;;
-esac
+    fi
+    
+    local command="$1"
+    shift
+    
+    case "$command" in
+        install)
+            if [[ $# -eq 0 ]]; then
+                echo "Error: No version specified for install"
+                show_usage
+            fi
+            cmd_install "$@"
+            ;;
+        uninstall)
+            if [[ $# -eq 0 ]]; then
+                echo "Error: No version specified for uninstall"
+                show_usage
+            fi
+            uninstall_version "$1"
+            ;;
+        list)
+            list_installed_versions
+            ;;
+        set-default)
+            if [[ $# -eq 0 ]]; then
+                echo "Error: No version specified for set-default"
+                show_usage
+            fi
+            set_default_version "$1"
+            ;;
+        help|-h|--help)
+            show_usage
+            ;;
+        *)
+            echo "Error: Unknown command '$command'"
+            echo ""
+            show_usage
+            ;;
+    esac
+}
+
+# Run main function
+main "$@"
