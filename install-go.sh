@@ -557,6 +557,9 @@ set_default_version() {
     echo "Current PATH order:" >&2
     echo "$PATH" | tr ':' '\n' | grep -n "go" | head -5 | sed 's/^/  /' >&2
     
+    # Clear command hash table to ensure we get fresh results
+    hash -r 2>/dev/null || true
+    
     # Verify it works
     echo "" >&2
     echo "Verification:" >&2
@@ -847,39 +850,7 @@ main() {
         echo ""
         echo "Setting as default Go version..."
         echo "================================"
-        
-        # First create the symlink
-        local gobin=$(setup_go_path)
-        local go_binary="go${version}"
-        cd "$gobin"
-        ln -sf "$go_binary" "go"
-        cd - >/dev/null
-        echo "✓ Created symlink: $gobin/go -> $go_binary" >&2
-        
-        # Now check if PATH ordering needs fixing
-        local expected_go_path="$gobin/go"
-        local actual_go_path=$(which go 2>/dev/null)
-        
-        if [[ "$actual_go_path" != "$expected_go_path" ]]; then
-            echo "" >&2
-            echo "⚠️  WARNING: The 'go' command is not using the goverman-managed version!" >&2
-            echo "  Expected: $expected_go_path" >&2
-            echo "  Actual: $actual_go_path" >&2
-            
-            # Analyze PATH for issues
-            local path_analysis=$(analyze_path_for_go "$gobin")
-            local issues_found=$(echo "$path_analysis" | cut -d'|' -f1)
-            
-            if [[ "$issues_found" == "true" ]]; then
-                echo "" >&2
-                echo "This is because another Go installation appears earlier in your PATH." >&2
-                
-                # Offer to fix
-                fix_path_ordering "$gobin"
-            fi
-        else
-            echo "✓ Go $version is now the default 'go' command" >&2
-        fi
+        set_default_version "$version"
     fi
 }
 
