@@ -404,7 +404,9 @@ analyze_path_for_go() {
     IFS=':' read -ra PATH_ARRAY <<< "$PATH"
     for dir in "${PATH_ARRAY[@]}"; do
         if [[ "$dir" == "$gobin" ]]; then
-            gobin_position=$position
+            if [[ $gobin_position -eq -1 ]]; then
+                gobin_position=$position
+            fi
         elif [[ -x "$dir/go" ]] && [[ "$dir" != "$gobin" ]]; then
             # Found another go binary
             if [[ $gobin_position -eq -1 ]] || [[ $position -lt $gobin_position ]]; then
@@ -517,6 +519,7 @@ fix_path_ordering() {
 # Function to set a Go version as default
 set_default_version() {
     local version="$1"
+    local force_path_check="${2:-}"
     local go_binary="go${version}"
     local gobin=$(setup_go_path)
     
@@ -564,15 +567,15 @@ set_default_version() {
     local expected_go_path="$gobin/go"
     local actual_go_path=$(which go 2>/dev/null)
     
+    # Always analyze PATH for conflicts when force_path_check is set
+    local path_analysis=$(analyze_path_for_go "$gobin")
+    local issues_found=$(echo "$path_analysis" | cut -d'|' -f1)
+    
     if [[ "$actual_go_path" != "$expected_go_path" ]]; then
         echo "" >&2
         echo "⚠️  WARNING: The 'go' command is not using the goverman-managed version!" >&2
         echo "  Expected: $expected_go_path" >&2
         echo "  Actual: $actual_go_path" >&2
-        
-        # Analyze PATH for issues
-        local path_analysis=$(analyze_path_for_go "$gobin")
-        local issues_found=$(echo "$path_analysis" | cut -d'|' -f1)
         
         if [[ "$issues_found" == "true" ]]; then
             echo "" >&2
@@ -584,6 +587,16 @@ set_default_version() {
             echo "" >&2
             echo "PATH is already correctly ordered." >&2
         fi
+    elif [[ "$force_path_check" == "check_path" ]] && [[ "$issues_found" == "true" ]]; then
+        # Even if go points to the right place, check for conflicts when --default was used
+        echo "" >&2
+        echo "⚠️  Found conflicting Go installations in your PATH!" >&2
+        echo "" >&2
+        echo "While 'go' currently points to the goverman-managed version," >&2
+        echo "there are other Go installations that could cause issues." >&2
+        
+        # Offer to fix
+        fix_path_ordering "$gobin"
     else
         echo "✓ Go $version is now the default 'go' command" >&2
     fi
@@ -741,6 +754,9 @@ list_installed_versions() {
 
 # Main script logic
 main() {
+    # Save original PATH before any modifications
+    export ORIGINAL_PATH="$PATH"
+    
     # Check arguments
     if [[ $# -eq 0 ]]; then
         echo "Error: No command specified"
@@ -843,7 +859,9 @@ main() {
         echo ""
         echo "Setting as default Go version..."
         echo "================================"
-        set_default_version "$version"
+        # Save the original PATH before it was modified by setup_go_path
+        local original_path="${ORIGINAL_PATH:-$PATH}"
+        PATH="$original_path" set_default_version "$version" "check_path"
     fi
 }
 
