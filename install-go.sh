@@ -357,7 +357,12 @@ exec "INSTALL_DIR_PLACEHOLDER/bin/go" "$@"
 EOF
     
     # Replace placeholder with actual path
-    sed -i "s|INSTALL_DIR_PLACEHOLDER|$install_dir|g" "$gobin/$go_binary"
+    # Use different sed syntax for macOS vs Linux
+    if [[ "$OS" == "darwin" ]]; then
+        sed -i '' "s|INSTALL_DIR_PLACEHOLDER|$install_dir|g" "$gobin/$go_binary"
+    else
+        sed -i "s|INSTALL_DIR_PLACEHOLDER|$install_dir|g" "$gobin/$go_binary"
+    fi
     
     chmod +x "$gobin/$go_binary"
     echo "✓ Wrapper binary created: $gobin/$go_binary"
