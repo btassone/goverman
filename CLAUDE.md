@@ -56,11 +56,28 @@ Based on git commits, we've recently worked on:
 
 ## Session Memory
 
-### 2025-05-29 Session
+### 2025-05-29 Session (Part 1)
 - Explored implementing a memory system for Claude sessions
 - Initially considered `.claude/sessions.md` approach but decided CLAUDE.md is the appropriate place
 - Cleaned up experimental `.claude` directory structure
 - Consolidated all context into this CLAUDE.md file for persistence across sessions
+
+### 2025-05-29 Session (Part 2)
+- Added `version` command to gman tool
+  - Shows current version using `git describe` when in git repo
+  - Falls back to hardcoded version outside git repos
+  - Supports `-v` and `--version` flags
+- Created and pushed v1.3.1 release with proper GitHub release notes
+- Standardized all previous release notes to consistent format
+- Rewrote git history to correct commit authorship
+  - Changed all commits to show Brandon Tassone as author
+  - Preserved commit messages and history
+  - Force pushed to update remote repository
+- Expanded GitHub Actions test matrix
+  - Added Ubuntu 22.04 and 20.04 for LTS coverage
+  - Added macOS 13 and 12 for broader macOS testing
+  - Added Windows support with Git Bash
+  - Now testing on 7 different OS configurations
 
 ## Usage Reminders
 ```bash
@@ -75,6 +92,9 @@ gman list
 
 # Set default version
 gman set-default 1.23.9
+
+# Check gman version
+gman version
 
 # Run tests
 ./test-go-scripts.sh
