@@ -469,10 +469,13 @@ fix_path_ordering() {
             # Create backup
             cp "$profile_file" "$profile_file.backup.$(date +%s)"
             
-            # Remove existing goverman entries
-            grep -v "# Added by goverman" "$profile_file" > "$profile_file.tmp"
-            grep -v "export PATH=\"$gobin:\$PATH\"" "$profile_file.tmp" > "$profile_file"
-            rm -f "$profile_file.tmp"
+            # Create temp file without goverman entries
+            local temp_clean=$(mktemp)
+            # Remove lines that contain "# Added by goverman" and the following line
+            awk '/# Added by goverman/{getline; next} 1' "$profile_file" > "$temp_clean"
+            # Also remove any standalone PATH exports for gobin
+            grep -v "export PATH=\"$gobin:\$PATH\"" "$temp_clean" > "$profile_file"
+            rm -f "$temp_clean"
         fi
         
         # Add new PATH entry at the beginning of the file (after shebang if present)
@@ -487,6 +490,7 @@ fix_path_ordering() {
             echo "" >> "$temp_file"
             echo "$path_marker" >> "$temp_file"
             echo "$path_export_line" >> "$temp_file"
+            echo "" >> "$temp_file"
             tail -n +2 "$profile_file" >> "$temp_file"
         else
             # Add PATH at the very beginning
@@ -580,7 +584,12 @@ set_default_version() {
             
             # Offer to fix
             fix_path_ordering "$gobin"
+        else
+            echo "" >&2
+            echo "PATH is already correctly ordered." >&2
         fi
+    else
+        echo "✓ Go $version is now the default 'go' command" >&2
     fi
     
     return 0
@@ -838,7 +847,39 @@ main() {
         echo ""
         echo "Setting as default Go version..."
         echo "================================"
-        set_default_version "$version"
+        
+        # First create the symlink
+        local gobin=$(setup_go_path)
+        local go_binary="go${version}"
+        cd "$gobin"
+        ln -sf "$go_binary" "go"
+        cd - >/dev/null
+        echo "✓ Created symlink: $gobin/go -> $go_binary" >&2
+        
+        # Now check if PATH ordering needs fixing
+        local expected_go_path="$gobin/go"
+        local actual_go_path=$(which go 2>/dev/null)
+        
+        if [[ "$actual_go_path" != "$expected_go_path" ]]; then
+            echo "" >&2
+            echo "⚠️  WARNING: The 'go' command is not using the goverman-managed version!" >&2
+            echo "  Expected: $expected_go_path" >&2
+            echo "  Actual: $actual_go_path" >&2
+            
+            # Analyze PATH for issues
+            local path_analysis=$(analyze_path_for_go "$gobin")
+            local issues_found=$(echo "$path_analysis" | cut -d'|' -f1)
+            
+            if [[ "$issues_found" == "true" ]]; then
+                echo "" >&2
+                echo "This is because another Go installation appears earlier in your PATH." >&2
+                
+                # Offer to fix
+                fix_path_ordering "$gobin"
+            fi
+        else
+            echo "✓ Go $version is now the default 'go' command" >&2
+        fi
     fi
 }
 
