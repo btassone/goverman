@@ -205,6 +205,15 @@ add_to_shell_profile() {
     
     echo "" >&2
     echo "Detected shell: $shell_name" >&2
+    
+    # Check if we're in CI/non-interactive mode
+    if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]] || [[ ! -t 0 ]]; then
+        echo "Running in non-interactive mode (CI detected). Skipping PATH setup." >&2
+        echo "To add to PATH manually, add this to $profile_file:" >&2
+        echo "  $path_export_line" >&2
+        return
+    fi
+    
     echo "Would you like to add $gobin to your PATH permanently?" >&2
     echo "This will add the following line to $profile_file:" >&2
     echo "  $path_export_line" >&2
@@ -380,6 +389,11 @@ install_direct() {
     local filename="go${version}.${os}-${arch}.${extension}"
     local url="https://go.dev/dl/${filename}"
     local go_binary="go${version}"
+    
+    # Debug OS detection in CI
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        echo "Debug: Detected OS string: '$(uname -s | tr '[:upper:]' '[:lower:]')'" >&2
+    fi
     
     echo "Installing Go ${version} using direct method..."
     echo "=============================================="
@@ -566,6 +580,15 @@ fix_path_ordering() {
         fi
     done
     echo "" >&2
+    
+    # Check if we're in CI/non-interactive mode
+    if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]] || [[ ! -t 0 ]]; then
+        echo "Running in non-interactive mode (CI detected). Skipping PATH fix." >&2
+        echo "To fix PATH ordering manually, add this to your shell profile:" >&2
+        echo "  export PATH=\"$gobin:\$PATH\"" >&2
+        return 1
+    fi
+    
     echo "Would you like to fix this by prepending $gobin to your PATH?" >&2
     echo "This will update $profile_file" >&2
     read -p "Fix PATH ordering? (y/N): " -n 1 -r
@@ -672,6 +695,18 @@ set_default_version() {
     # Check if the PATH ordering is causing issues
     local expected_go_path="$gobin/go"
     local actual_go_path=$(which go 2>/dev/null)
+    
+    # Normalize paths for comparison on Windows
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$MSYSTEM" ]]; then
+        # Convert Windows paths to Unix-style for comparison
+        # C:\Users\... becomes /c/Users/...
+        expected_go_path=$(echo "$expected_go_path" | sed 's|\\|/|g' | sed 's|C:|/c|g')
+        actual_go_path=$(echo "$actual_go_path" | sed 's|\\|/|g' | sed 's|C:|/c|g')
+        
+        # Also handle case sensitivity
+        expected_go_path=$(echo "$expected_go_path" | tr '[:upper:]' '[:lower:]')
+        actual_go_path=$(echo "$actual_go_path" | tr '[:upper:]' '[:lower:]')
+    fi
     
     # Always analyze PATH for conflicts when force_path_check is set
     local path_analysis=$(analyze_path_for_go "$gobin")
@@ -1063,6 +1098,14 @@ cmd_install() {
         echo "Current installation: $($go_binary version)"
         echo "GOROOT: $($go_binary env GOROOT)"
         echo ""
+        
+        # Check if we're in CI/non-interactive mode
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]] || [[ ! -t 0 ]]; then
+            echo "Running in non-interactive mode (CI detected). Skipping reinstall." >&2
+            echo "To force reinstall, first uninstall with: gman uninstall $version" >&2
+            exit 0
+        fi
+        
         read -p "Do you want to reinstall? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then

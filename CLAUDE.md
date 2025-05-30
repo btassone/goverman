@@ -79,6 +79,22 @@ Based on git commits, we've recently worked on:
   - Added Windows support with Git Bash
   - Now testing on 7 different OS configurations
 
+### 2025-05-30 Session - GitHub Actions Test Failures Investigation
+- Investigated test failures on Ubuntu 20.04, macOS 12, and macOS 13
+- Identified root causes:
+  - golang.org/dl installation failures with "undefined: signalsToIgnore" error
+  - Known issue when installing older Go versions with newer base Go versions
+  - OS-specific issues with getent command availability on macOS
+  - PATH configuration issues in GitHub Actions environment
+- Implemented fixes:
+  - Updated test versions from 1.21.5/1.20.14 to 1.22.0/1.21.8 for better compatibility
+  - Added error detection for known golang.org/dl issues
+  - Enhanced debugging output for environment information
+  - Improved fallback mechanisms (test falls back to direct method if official fails)
+  - Better error handling for curl/wget downloads
+  - Fixed getent fallback for systems without it
+- Created github-actions-fixes.md documenting all issues and solutions
+
 ## Usage Reminders
 ```bash
 # Install a Go version

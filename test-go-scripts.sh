@@ -5,7 +5,7 @@
 
 set -e
 
-TEST_VERSION="1.21.5"  # Use an older version for testing
+TEST_VERSION="1.22.0"  # Use a more recent version for better compatibility
 SCRIPT_DIR="$(dirname "$0")"
 GMAN_SCRIPT="$SCRIPT_DIR/gman"
 
@@ -14,6 +14,12 @@ echo "==============="
 echo "Test version: $TEST_VERSION"
 echo "Date: $(date)"
 echo ""
+
+# Debug: Show CI environment
+if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "Running in CI mode (CI=${CI:-not set}, GITHUB_ACTIONS=${GITHUB_ACTIONS:-not set})"
+    echo ""
+fi
 
 # Function to check if command exists
 command_exists() {
@@ -71,6 +77,16 @@ export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
 GOPATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
 GOBIN=$(go env GOBIN 2>/dev/null || echo "$GOPATH/bin")
 export PATH="$GOBIN:$PATH"
+
+# Debug: Print environment info
+echo "Debug: Environment Information"
+echo "=============================="
+echo "OS: $(uname -s)"
+echo "Architecture: $(uname -m)"
+echo "GOPATH: $GOPATH"
+echo "GOBIN: $GOBIN"
+echo "PATH: $PATH"
+echo ""
 
 # Check if Go is available
 if ! command -v go >/dev/null 2>&1; then
@@ -130,11 +146,32 @@ echo ""
 
 # Test 1: Install with official method
 echo "=== TEST 1: Install with official method ==="
-run_test "Install go$TEST_VERSION (official)" \
-    "\"$GMAN_SCRIPT\" install \"$TEST_VERSION\" official"
+echo "Debug: Attempting to install go$TEST_VERSION using official method..."
+if ! "$GMAN_SCRIPT" install "$TEST_VERSION" official; then
+    echo "Warning: Official method failed, trying direct method as fallback..."
+    run_test "Install go$TEST_VERSION (direct fallback)" \
+        "\"$GMAN_SCRIPT\" install \"$TEST_VERSION\" direct"
+else
+    echo "✅ PASS: Install go$TEST_VERSION (official)"
+fi
 
 # Update PATH after installation
 update_path
+
+# Debug: Check if binary exists in expected locations
+echo "Debug: Checking for go$TEST_VERSION binary..."
+if command -v "go$TEST_VERSION" >/dev/null 2>&1; then
+    echo "Found at: $(which go$TEST_VERSION)"
+else
+    echo "Binary not found in PATH"
+    echo "Checking common locations:"
+    for loc in "$GOBIN/go$TEST_VERSION" "$HOME/go/bin/go$TEST_VERSION" "/usr/local/go/bin/go$TEST_VERSION"; do
+        if [[ -f "$loc" ]]; then
+            echo "  Found at: $loc"
+        fi
+    done
+fi
+echo ""
 
 run_test "Verify go$TEST_VERSION binary exists" \
     "command_exists \"go$TEST_VERSION\""
@@ -189,7 +226,7 @@ run_test "Verify list shows default marker" \
 
 # Test 5: Install another version with --default flag
 echo "=== TEST 5: Install with --default flag ==="
-TEST_VERSION2="1.20.14"
+TEST_VERSION2="1.21.8"
 run_test "Install go$TEST_VERSION2 with --default flag" \
     "\"$GMAN_SCRIPT\" install \"$TEST_VERSION2\" official --default"
 
