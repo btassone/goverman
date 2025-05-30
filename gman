@@ -273,11 +273,6 @@ install_official() {
     echo "Installing Go ${version} using official method..."
     echo "================================================="
     
-    # Check Go version for compatibility
-    local go_version=$(go version | awk '{print $3}' | sed 's/go//')
-    local go_major=$(echo "$go_version" | cut -d'.' -f1)
-    local go_minor=$(echo "$go_version" | cut -d'.' -f2)
-    
     # Try with CGO enabled first
     echo "Attempting installation with CGO enabled..."
     local install_output
@@ -290,7 +285,7 @@ install_official() {
         # Check for known error patterns
         if echo "$install_output" | grep -q "undefined: signalsToIgnore"; then
             echo "Error: Known compatibility issue with golang.org/dl"
-            echo "This is a known issue when installing older Go versions."
+            echo "This is a known issue when installing older Go versions with newer base Go."
             echo "Please use the direct method instead: gman install $version direct"
             exit 1
         fi
@@ -302,6 +297,13 @@ install_official() {
         if [[ $install_status -eq 0 ]]; then
             echo "✓ Installation successful with CGO disabled"
         else
+            # Check again for the known error pattern
+            if echo "$install_output" | grep -q "undefined: signalsToIgnore"; then
+                echo "Error: Known compatibility issue with golang.org/dl"
+                echo "This is a known issue when installing older Go versions with newer base Go."
+                echo "Please use the direct method instead: gman install $version direct"
+                exit 1
+            fi
             echo "Error: Official installation method failed"
             echo "Error output: $install_output"
             echo "Try using the direct method: gman install $version direct"
