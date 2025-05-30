@@ -88,12 +88,19 @@ detect_arch() {
 # Function to detect OS
 detect_os() {
     local os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    # Debug output for GitHub Actions
+    if [[ -n "$GITHUB_ACTIONS" ]]; then
+        echo "Debug: Detected OS string: '$os'" >&2
+    fi
     case $os in
         linux)
             echo "linux"
             ;;
         darwin)
             echo "darwin"
+            ;;
+        mingw*|msys*|cygwin*)
+            echo "windows"
             ;;
         *)
             echo "Unsupported OS: $os" >&2
@@ -123,7 +130,12 @@ detect_shell() {
         shell_name=$(basename "$SHELL")
     else
         # Fallback: check passwd file for user's default shell
-        local user_shell=$(getent passwd "$USER" | cut -d: -f7)
+        local user_shell=""
+        if command -v getent >/dev/null 2>&1; then
+            user_shell=$(getent passwd "$USER" | cut -d: -f7)
+        elif [[ -f /etc/passwd ]]; then
+            user_shell=$(grep "^$USER:" /etc/passwd | cut -d: -f7)
+        fi
         if [[ -n "$user_shell" ]]; then
             shell_name=$(basename "$user_shell")
         else
@@ -261,16 +273,37 @@ install_official() {
     echo "Installing Go ${version} using official method..."
     echo "================================================="
     
+    # Check Go version for compatibility
+    local go_version=$(go version | awk '{print $3}' | sed 's/go//')
+    local go_major=$(echo "$go_version" | cut -d'.' -f1)
+    local go_minor=$(echo "$go_version" | cut -d'.' -f2)
+    
     # Try with CGO enabled first
     echo "Attempting installation with CGO enabled..."
-    if go install "golang.org/dl/go${version}@latest" 2>/dev/null; then
+    local install_output
+    install_output=$(go install "golang.org/dl/go${version}@latest" 2>&1)
+    local install_status=$?
+    
+    if [[ $install_status -eq 0 ]]; then
         echo "✓ Installation successful with CGO enabled"
     else
+        # Check for known error patterns
+        if echo "$install_output" | grep -q "undefined: signalsToIgnore"; then
+            echo "Error: Known compatibility issue with golang.org/dl"
+            echo "This is a known issue when installing older Go versions."
+            echo "Please use the direct method instead: gman install $version direct"
+            exit 1
+        fi
+        
         echo "Installation failed with CGO enabled, trying with CGO disabled..."
-        if CGO_ENABLED=0 go install "golang.org/dl/go${version}@latest"; then
+        install_output=$(CGO_ENABLED=0 go install "golang.org/dl/go${version}@latest" 2>&1)
+        install_status=$?
+        
+        if [[ $install_status -eq 0 ]]; then
             echo "✓ Installation successful with CGO disabled"
         else
             echo "Error: Official installation method failed"
+            echo "Error output: $install_output"
             echo "Try using the direct method: gman install $version direct"
             exit 1
         fi
@@ -335,7 +368,14 @@ install_direct() {
     local version="$1"
     local os=$(detect_os)
     local arch=$(detect_arch)
-    local filename="go${version}.${os}-${arch}.tar.gz"
+    local extension="tar.gz"
+    
+    # Windows uses zip files
+    if [[ "$os" == "windows" ]]; then
+        extension="zip"
+    fi
+    
+    local filename="go${version}.${os}-${arch}.${extension}"
     local url="https://go.dev/dl/${filename}"
     local go_binary="go${version}"
     
@@ -352,12 +392,30 @@ install_direct() {
     
     # Download the binary
     echo "Downloading $filename..."
+    local download_status=0
+    
     if command -v wget >/dev/null 2>&1; then
-        wget -q --show-progress -O "$temp_dir/$filename" "$url"
+        echo "Using wget..."
+        if ! wget -q --show-progress -O "$temp_dir/$filename" "$url"; then
+            download_status=$?
+            echo "Error: wget failed with status $download_status"
+            echo "URL attempted: $url"
+        fi
     elif command -v curl >/dev/null 2>&1; then
-        curl -L --progress-bar -o "$temp_dir/$filename" "$url"
+        echo "Using curl..."
+        if ! curl -L --progress-bar -o "$temp_dir/$filename" "$url"; then
+            download_status=$?
+            echo "Error: curl failed with status $download_status"
+            echo "URL attempted: $url"
+        fi
     else
         echo "Error: Neither wget nor curl is available for download"
+        exit 1
+    fi
+    
+    if [[ $download_status -ne 0 ]]; then
+        echo "Error: Failed to download Go $version"
+        echo "Please check your internet connection and try again"
         exit 1
     fi
     
@@ -373,18 +431,35 @@ install_direct() {
     
     # Extract Go
     echo "Extracting Go ${version}..."
-    tar -C "$HOME/sdk" -xzf "$temp_dir/$filename"
+    if [[ "$os" == "windows" ]]; then
+        # For Windows, use unzip
+        if command -v unzip >/dev/null 2>&1; then
+            unzip -q "$temp_dir/$filename" -d "$HOME/sdk"
+        else
+            echo "Error: unzip is required for Windows installation"
+            exit 1
+        fi
+    else
+        # For Unix-like systems, use tar
+        tar -C "$HOME/sdk" -xzf "$temp_dir/$filename"
+    fi
     mv "$HOME/sdk/go" "$install_dir"
     echo "✓ Extracted to: $install_dir"
     
     # Create wrapper binary
     echo "Creating wrapper binary..."
     
+    # Determine the go executable name based on OS
+    local go_exe="go"
+    if [[ "$os" == "windows" ]]; then
+        go_exe="go.exe"
+    fi
+    
     # Create the wrapper script with the actual path directly
     cat > "$gobin/$go_binary" << EOF
 #!/bin/bash
 export GOROOT="$install_dir"
-exec "$install_dir/bin/go" "\$@"
+exec "$install_dir/bin/$go_exe" "\$@"
 EOF
     
     chmod +x "$gobin/$go_binary"
