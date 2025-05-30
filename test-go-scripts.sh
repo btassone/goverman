@@ -218,8 +218,14 @@ run_test "Set go$TEST_VERSION as default" \
 run_test "Verify 'go' command points to go$TEST_VERSION" \
     "go version | grep -q \"go$TEST_VERSION\""
 
-run_test "Verify default symlink exists" \
-    "test -L \"$HOME/go/bin/go\""
+# Skip symlink test on Windows as it uses wrapper scripts instead
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$MSYSTEM" ]]; then
+    run_test "Verify default go exists" \
+        "test -f \"$HOME/go/bin/go\""
+else
+    run_test "Verify default symlink exists" \
+        "test -L \"$HOME/go/bin/go\""
+fi
 
 run_test "Verify list shows default marker" \
     "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
