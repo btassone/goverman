@@ -112,6 +112,19 @@ Based on git commits, we've recently worked on:
 - Created test-alpine-detection.sh for verification
 - Released v1.6.0 with full Alpine Linux support
 
+### 2025-06-01 Session (Part 2) - AlmaLinux Support and Distribution Detection
+- Added Linux distribution detection feature:
+  - Created `detect_linux_distro()` function that identifies specific distributions
+  - Reads /etc/os-release and /etc/redhat-release for distribution identification
+  - Displays distribution name during installation for better diagnostics
+- Added AlmaLinux support:
+  - Added AlmaLinux 8 and 9 to CI test matrix
+  - Fixed curl-minimal conflict in AlmaLinux containers with --allowerasing
+  - All tests passing on both AlmaLinux versions
+- Created test-distro-detection.sh for verification
+- Updated documentation to list enterprise Linux distributions
+- Released v1.7.0 with distribution detection and AlmaLinux support
+
 ## Usage Reminders
 ```bash
 # Install a Go version
