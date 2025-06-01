@@ -199,6 +199,19 @@ Alpine Linux uses musl libc instead of glibc, which can affect Go binary compati
 - The direct installation method may work better than the official method
 - Some older Go versions may not work at all due to libc differences
 
+## Testing
+
+Goverman has comprehensive test coverage across multiple platforms:
+- Automated CI/CD tests run on every push and pull request
+- Tests run on 10+ different OS configurations including:
+  - Ubuntu (latest, 22.04)
+  - macOS (latest Apple Silicon, Intel)
+  - Windows (via Git Bash)
+  - Alpine Linux (musl libc)
+  - AlmaLinux 8 & 9
+  - openSUSE Leap & Tumbleweed
+- Run tests locally with `./test-go-scripts.sh`
+
 ## Contributing
 
 Pull requests are welcome! Please ensure all tests pass by running `./test-go-scripts.sh` before submitting.

@@ -125,6 +125,16 @@ Based on git commits, we've recently worked on:
 - Updated documentation to list enterprise Linux distributions
 - Released v1.7.0 with distribution detection and AlmaLinux support
 
+### 2025-06-01 Session (Part 3) - openSUSE Support
+- Added openSUSE support:
+  - Added openSUSE Leap and Tumbleweed to CI test matrix
+  - Fixed missing dependencies in minimal openSUSE containers (tar, findutils)
+  - Both variants test successfully in official containers
+- Updated distribution detection to handle SUSE-based systems
+- Enhanced test-distro-detection.sh for zypper package manager
+- Updated documentation to list SUSE-based distributions
+- Released v1.8.0 with full openSUSE support
+
 ## Usage Reminders
 ```bash
 # Install a Go version
