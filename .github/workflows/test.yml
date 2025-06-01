@@ -116,16 +116,15 @@ jobs:
     - name: Install Gentoo dependencies
       if: matrix.container == 'gentoo/stage3:latest'
       run: |
+        # Initialize Portage repository
+        emerge-webrsync
         # Install required packages
         emerge -q app-shells/bash dev-vcs/git net-misc/curl net-misc/wget sys-apps/which sys-apps/findutils
-        # Install Go
-        emerge -q dev-lang/go || {
-          # If Go is not available, download and install it
-          curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
-          tar -C /usr/local -xzf /tmp/go.tar.gz
-          echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
-          export PATH=/usr/local/go/bin:$PATH
-        }
+        # Install Go - download directly since emerge would take too long to compile
+        curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+        tar -C /usr/local -xzf /tmp/go.tar.gz
+        echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
+        export PATH=/usr/local/go/bin:$PATH
         mkdir -p $HOME/go/bin
         echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.bash_profile
     
