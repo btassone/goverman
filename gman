@@ -590,11 +590,21 @@ fix_path_ordering() {
     fi
     
     echo "Would you like to fix this by prepending $gobin to your PATH?" >&2
-    echo "This will update $profile_file" >&2
+    if [[ -n "$profile_file" ]]; then
+        echo "This will update $profile_file" >&2
+    else
+        echo "Warning: Could not determine shell profile file" >&2
+    fi
     read -p "Fix PATH ordering? (y/N): " -n 1 -r
     echo >&2
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Check if we have a valid profile file
+        if [[ -z "$profile_file" ]]; then
+            echo "Error: Cannot update PATH - no shell profile file found" >&2
+            return 1
+        fi
+        
         # Remove any existing goverman PATH entries
         if [[ -f "$profile_file" ]]; then
             # Create backup
@@ -844,9 +854,12 @@ list_installed_versions() {
     # Find go binaries, avoiding duplicates
     for dir in "${search_dirs[@]}"; do
         if [[ -d "$dir" ]]; then
-            for binary in "$dir"/go[0-9]*; do
-                if [[ -x "$binary" && -f "$binary" ]]; then
+            # Use find to handle Windows executable detection better
+            while IFS= read -r binary; do
+                if [[ -n "$binary" ]]; then
                     local version_name=$(basename "$binary")
+                    # Remove .exe extension if present (Windows)
+                    version_name="${version_name%.exe}"
                     if [[ "$version_name" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                         # Skip if we've already seen this version
                         if [[ " $seen_versions " == *" $version_name "* ]]; then
@@ -871,7 +884,7 @@ list_installed_versions() {
                         found_versions=$((found_versions + 1))
                     fi
                 fi
-            done
+            done < <(find "$dir" -maxdepth 1 -name "go[0-9]*" -type f 2>/dev/null)
         fi
     done
     
