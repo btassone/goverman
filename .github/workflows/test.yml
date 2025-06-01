@@ -26,6 +26,12 @@ jobs:
           - os: ubuntu-latest
             name: almalinux-8
             container: almalinux:8
+          - os: ubuntu-latest
+            name: opensuse-leap
+            container: opensuse/leap:latest
+          - os: ubuntu-latest
+            name: opensuse-tumbleweed
+            container: opensuse/tumbleweed:latest
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     
@@ -47,6 +53,24 @@ jobs:
         dnf install -y --allowerasing bash git curl wget tar gzip which
         # Install Go from EPEL or download it
         dnf install -y golang || {
+          # If Go is not in repos, download and install it
+          curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+          tar -C /usr/local -xzf /tmp/go.tar.gz
+          echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
+          export PATH=/usr/local/go/bin:$PATH
+        }
+        mkdir -p $HOME/go/bin
+        echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.bash_profile
+    
+    - name: Install openSUSE dependencies
+      if: startsWith(matrix.container || '', 'opensuse')
+      run: |
+        # Update package index
+        zypper --non-interactive refresh
+        # Install required packages
+        zypper --non-interactive install bash git curl wget tar gzip which
+        # Install Go
+        zypper --non-interactive install go || {
           # If Go is not in repos, download and install it
           curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
           tar -C /usr/local -xzf /tmp/go.tar.gz

@@ -167,6 +167,7 @@ The test script will:
 - **Linux**
   - Standard distributions (Ubuntu, Debian, Fedora, etc.)
   - Enterprise distributions (AlmaLinux, CentOS, RHEL, Rocky Linux)
+  - SUSE-based distributions (openSUSE Leap, openSUSE Tumbleweed, SLES)
   - Alpine Linux (musl libc) - with limitations*
 - **macOS**
   - macOS 12 (Monterey) and later
@@ -188,7 +189,7 @@ Goverman automatically detects your Linux distribution and displays it during in
 - Providing distribution-specific recommendations
 - Better support and troubleshooting
 
-Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, Alpine, and more.
+Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, openSUSE, SLES, Alpine, and more.
 
 ### Notes on Alpine Linux Support
 
