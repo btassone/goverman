@@ -56,6 +56,7 @@ echo "yum command exists: $(command -v yum >/dev/null 2>&1 && echo "yes (RHEL-ba
 echo "apt command exists: $(command -v apt >/dev/null 2>&1 && echo "yes (Debian/Ubuntu)" || echo "no")"
 echo "apk command exists: $(command -v apk >/dev/null 2>&1 && echo "yes (Alpine)" || echo "no")"
 echo "zypper command exists: $(command -v zypper >/dev/null 2>&1 && echo "yes (openSUSE/SLES)" || echo "no")"
+echo "pacman command exists: $(command -v pacman >/dev/null 2>&1 && echo "yes (Arch/Manjaro)" || echo "no")"
 
 # Test compatibility message
 echo ""
@@ -79,6 +80,11 @@ case "$distro" in
         echo "✓ SUSE-based distribution detected - using glibc"
         echo "Official Go binaries should work without issues"
         echo "Note: openSUSE uses zypper package manager"
+        ;;
+    arch|archlinux|manjaro|endeavouros)
+        echo "✓ Arch-based distribution detected - using glibc"
+        echo "Official Go binaries should work without issues"
+        echo "Note: Arch Linux uses pacman package manager"
         ;;
     *)
         echo "✓ Standard Linux detected - using glibc"

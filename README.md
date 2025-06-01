@@ -168,6 +168,7 @@ The test script will:
   - Standard distributions (Ubuntu, Debian, Fedora, etc.)
   - Enterprise distributions (AlmaLinux, CentOS, RHEL, Rocky Linux)
   - SUSE-based distributions (openSUSE Leap, openSUSE Tumbleweed, SLES)
+  - Arch-based distributions (Arch Linux, Manjaro, EndeavourOS)
   - Alpine Linux (musl libc) - with limitations*
 - **macOS**
   - macOS 12 (Monterey) and later
@@ -189,7 +190,7 @@ Goverman automatically detects your Linux distribution and displays it during in
 - Providing distribution-specific recommendations
 - Better support and troubleshooting
 
-Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, openSUSE, SLES, Alpine, and more.
+Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, openSUSE, SLES, Arch Linux, Alpine, and more.
 
 ### Notes on Alpine Linux Support
 
@@ -210,6 +211,7 @@ Goverman has comprehensive test coverage across multiple platforms:
   - Alpine Linux (musl libc)
   - AlmaLinux 8 & 9
   - openSUSE Leap & Tumbleweed
+  - Arch Linux
 - Run tests locally with `./test-go-scripts.sh`
 
 ## Contributing
