@@ -247,6 +247,10 @@ update_path
 run_test "Verify go$TEST_VERSION2 is now default" \
     "go version | grep -q \"go$TEST_VERSION2\""
 
+# Debug: Print the output of gman list
+echo "Debug: gman list output after setting go$TEST_VERSION2 as default:"
+"$GMAN_SCRIPT" list
+
 run_test "Verify list shows new default" \
     "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\\[DEFAULT\\]\""
 
