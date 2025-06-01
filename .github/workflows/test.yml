@@ -73,7 +73,7 @@ jobs:
         # Update package index
         zypper --non-interactive refresh
         # Install required packages (tar and gzip already installed for checkout)
-        zypper --non-interactive install bash git curl wget which
+        zypper --non-interactive install bash git curl wget which findutils
         # Install Go
         zypper --non-interactive install go || {
           # If Go is not in repos, download and install it
