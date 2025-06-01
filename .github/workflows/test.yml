@@ -36,6 +36,11 @@ jobs:
     container: ${{ matrix.container }}
     
     steps:
+    - name: Install essential tools for checkout (openSUSE)
+      if: startsWith(matrix.container || '', 'opensuse')
+      run: |
+        zypper --non-interactive install tar gzip
+    
     - uses: actions/checkout@v4
     
     - name: Install Alpine dependencies
@@ -67,8 +72,8 @@ jobs:
       run: |
         # Update package index
         zypper --non-interactive refresh
-        # Install required packages
-        zypper --non-interactive install bash git curl wget tar gzip which
+        # Install required packages (tar and gzip already installed for checkout)
+        zypper --non-interactive install bash git curl wget which
         # Install Go
         zypper --non-interactive install go || {
           # If Go is not in repos, download and install it
