@@ -8,16 +8,33 @@ on:
 
 jobs:
   test:
-    name: Test on ${{ matrix.os }}
+    name: Test on ${{ matrix.name || matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, macos-13, windows-latest]
+        include:
+          - os: ubuntu-latest
+          - os: ubuntu-22.04
+          - os: macos-latest
+          - os: macos-13
+          - os: windows-latest
+          - os: ubuntu-latest
+            name: alpine-latest
+            container: alpine:latest
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     
     steps:
     - uses: actions/checkout@v4
     
+    - name: Install Alpine dependencies
+      if: matrix.container == 'alpine:latest'
+      run: |
+        apk add --no-cache bash go git curl wget
+        mkdir -p $HOME/go/bin
+        echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.profile
+    
     - name: Set up Go
+      if: matrix.container != 'alpine:latest'
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
@@ -52,34 +69,3 @@ jobs:
       run: ./test-list-available.sh
       shell: bash
       if: runner.os == 'Windows'
-
-  test-alpine:
-    name: Test on Alpine Linux
-    runs-on: ubuntu-latest
-    container:
-      image: alpine:latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install dependencies
-      run: |
-        apk add --no-cache bash go git curl wget
-    
-    - name: Set up Go environment
-      run: |
-        mkdir -p $HOME/go/bin
-        echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.profile
-        source $HOME/.profile
-    
-    - name: Make scripts executable
-      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh
-    
-    - name: Run PATH setup tests
-      run: ./test-path-setup.sh
-    
-    - name: Run installation tests
-      run: ./test-go-scripts.sh
-    
-    - name: Run list-available tests
-      run: ./test-list-available.sh
