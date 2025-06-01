@@ -26,7 +26,7 @@ show_usage() {
     echo "  install <version> [method] [--default]   Install a Go version"
     echo "  uninstall <version>                      Uninstall a Go version"
     echo "  list                                     List installed Go versions"
-    echo "  list-available                           List available Go versions to install"
+    echo "  list-available [--all]                   List available Go versions to install"
     echo "  set-default <version>                    Set a version as the default 'go' command"
     echo "  version                                  Show gman version"
     echo "  help                                     Show this help message"
@@ -47,6 +47,8 @@ show_usage() {
     echo "  gman uninstall 1.21.5                    # Uninstall a Go version"
     echo "  gman set-default 1.21.5                  # Set existing version as default"
     echo "  gman list                                # List all installed versions"
+    echo "  gman list-available                      # List recent available versions (top 20)"
+    echo "  gman list-available --all                # List all available versions"
     echo "  gman version                             # Show gman version"
     exit 0
 }
@@ -939,6 +941,12 @@ list_installed_versions() {
 
 # Function to list available Go versions
 list_available_versions() {
+    # Check for --all flag
+    local show_all=false
+    if [[ "$1" == "--all" ]]; then
+        show_all=true
+    fi
+    
     echo "Fetching available Go versions..."
     echo "================================="
     echo ""
@@ -994,15 +1002,15 @@ list_available_versions() {
         fi
         count=$((count + 1))
         
-        # Show only first 20 versions by default
-        if [[ $count -ge 20 ]]; then
+        # Show only first 20 versions by default unless --all is specified
+        if [[ "$show_all" == "false" ]] && [[ $count -ge 20 ]]; then
             local remaining=$(echo "$versions" | wc -l)
             remaining=$((remaining - 20))
             if [[ $remaining -gt 0 ]]; then
                 echo ""
                 echo "  ... and $remaining more versions"
                 echo ""
-                echo "Note: Showing top 20 versions. Visit https://go.dev/dl/ for complete list."
+                echo "Note: Showing top 20 versions. Use 'gman list-available --all' to see all versions."
             fi
             break
         fi
@@ -1297,7 +1305,7 @@ main() {
             list_installed_versions
             ;;
         list-available)
-            list_available_versions
+            list_available_versions "$@"
             ;;
         set-default)
             if [[ $# -eq 0 ]]; then
