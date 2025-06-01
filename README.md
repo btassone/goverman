@@ -88,6 +88,17 @@ View all Go versions installed by goverman:
 gman list
 ```
 
+#### List Available Versions
+
+View available Go versions that can be installed:
+```bash
+# Show recent versions (top 20)
+gman list-available
+
+# Show all available versions
+gman list-available --all
+```
+
 #### Set Default Version
 
 Set an installed version as the default `go` command:
@@ -151,9 +162,31 @@ The test script will:
 
 ## Supported Platforms
 
-- Linux (amd64, arm64, armv6l)
-- macOS (amd64, arm64)
-- Windows (amd64) - via Git Bash or WSL
+### Operating Systems
+
+- **Linux**
+  - Standard distributions (Ubuntu, Debian, Fedora, CentOS, etc.)
+  - Alpine Linux (musl libc) - with limitations*
+- **macOS**
+  - macOS 12 (Monterey) and later
+  - Both Intel and Apple Silicon
+- **Windows**
+  - Windows 10/11 via Git Bash or WSL
+  - Windows Server 2019 and later
+
+### Architectures
+
+- **amd64** (x86_64) - Intel/AMD 64-bit processors
+- **arm64** (aarch64) - ARM 64-bit processors (Apple Silicon, AWS Graviton, etc.)
+- **armv6l** - ARM 32-bit processors (Raspberry Pi, etc.)
+
+### Notes on Alpine Linux Support
+
+Alpine Linux uses musl libc instead of glibc, which can affect Go binary compatibility:
+- Official Go binaries from go.dev are built for glibc and may have limited compatibility
+- For best results on Alpine, consider using Alpine's package manager: `apk add go`
+- The direct installation method may work better than the official method
+- Some older Go versions may not work at all due to libc differences
 
 ## Contributing
 

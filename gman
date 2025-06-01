@@ -88,6 +88,31 @@ detect_arch() {
     esac
 }
 
+# Function to detect if using musl libc (Alpine Linux)
+detect_musl() {
+    # Check if ldd exists and check for musl
+    if command -v ldd >/dev/null 2>&1; then
+        if ldd --version 2>&1 | grep -q musl; then
+            echo "true"
+            return
+        fi
+    fi
+    
+    # Check if /etc/alpine-release exists
+    if [[ -f /etc/alpine-release ]]; then
+        echo "true"
+        return
+    fi
+    
+    # Check if apk package manager exists (Alpine's package manager)
+    if command -v apk >/dev/null 2>&1; then
+        echo "true"
+        return
+    fi
+    
+    echo "false"
+}
+
 # Function to detect OS
 detect_os() {
     local os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -281,9 +306,18 @@ setup_go_path() {
 install_official() {
     local version="$1"
     local go_binary="go${version}"
+    local is_musl=$(detect_musl)
     
     echo "Installing Go ${version} using official method..."
     echo "================================================="
+    
+    # Check if we're on Alpine Linux
+    if [[ "$is_musl" == "true" ]]; then
+        echo "Note: Detected Alpine Linux (musl libc)."
+        echo "The official method may have limited compatibility on Alpine."
+        echo "If you encounter issues, try the direct method instead."
+        echo ""
+    fi
     
     # Try with CGO enabled first
     echo "Attempting installation with CGO enabled..."
@@ -382,6 +416,7 @@ install_direct() {
     local version="$1"
     local os=$(detect_os)
     local arch=$(detect_arch)
+    local is_musl=$(detect_musl)
     local extension="tar.gz"
     
     # Windows uses zip files
@@ -389,19 +424,33 @@ install_direct() {
         extension="zip"
     fi
     
-    local filename="go${version}.${os}-${arch}.${extension}"
+    # Construct filename based on OS and libc type
+    local filename=""
+    if [[ "$os" == "linux" ]] && [[ "$is_musl" == "true" ]]; then
+        # Alpine Linux uses different binary naming
+        # Note: Official Go releases don't have Alpine-specific builds before Go 1.21
+        # We'll try the regular Linux build first, which may work on newer Alpine versions
+        filename="go${version}.${os}-${arch}.${extension}"
+        echo "Note: Detected Alpine Linux (musl libc). Official Go builds may have limited compatibility."
+        echo "For best results, consider using Alpine's package manager: apk add go"
+    else
+        filename="go${version}.${os}-${arch}.${extension}"
+    fi
+    
     local url="https://go.dev/dl/${filename}"
     local go_binary="go${version}"
     
     # Debug OS detection in CI
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
         echo "Debug: Detected OS string: '$(uname -s | tr '[:upper:]' '[:lower:]')'" >&2
+        echo "Debug: Musl libc detected: '$is_musl'" >&2
     fi
     
     echo "Installing Go ${version} using direct method..."
     echo "=============================================="
     echo "OS: $os"
     echo "Architecture: $arch"
+    echo "Musl libc (Alpine): $is_musl"
     echo "Download URL: $url"
     echo ""
     
