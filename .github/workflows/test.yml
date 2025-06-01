@@ -123,10 +123,13 @@ jobs:
         # Install Go - download directly since emerge would take too long to compile
         curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
         tar -C /usr/local -xzf /tmp/go.tar.gz
-        echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
-        export PATH=/usr/local/go/bin:$PATH
+        # Clean up PATH (remove empty entries) and set it properly
+        export PATH="/usr/local/go/bin:${PATH//::/:}"
+        export PATH="${PATH#:}"
+        export PATH="${PATH%:}"
+        echo "export PATH=\"/usr/local/go/bin:\$PATH\"" >> /etc/profile
         mkdir -p $HOME/go/bin
-        echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.bash_profile
+        echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> $HOME/.bash_profile
     
     - name: Set up Go
       if: matrix.container == null
