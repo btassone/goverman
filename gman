@@ -26,6 +26,7 @@ show_usage() {
     echo "  install <version> [method] [--default]   Install a Go version"
     echo "  uninstall <version>                      Uninstall a Go version"
     echo "  list                                     List installed Go versions"
+    echo "  list-available                           List available Go versions to install"
     echo "  set-default <version>                    Set a version as the default 'go' command"
     echo "  version                                  Show gman version"
     echo "  help                                     Show this help message"
@@ -936,6 +937,90 @@ list_installed_versions() {
     fi
 }
 
+# Function to list available Go versions
+list_available_versions() {
+    echo "Fetching available Go versions..."
+    echo "================================="
+    echo ""
+    
+    # Check if we have curl or wget
+    local downloader=""
+    if command -v curl >/dev/null 2>&1; then
+        downloader="curl"
+    elif command -v wget >/dev/null 2>&1; then
+        downloader="wget"
+    else
+        echo "Error: Neither curl nor wget is available"
+        echo "Cannot fetch version list from go.dev"
+        return 1
+    fi
+    
+    # Fetch the download page
+    local temp_file=$(mktemp)
+    local url="https://go.dev/dl/"
+    
+    echo "Fetching from: $url"
+    echo ""
+    
+    if [[ "$downloader" == "curl" ]]; then
+        curl -sL "$url" > "$temp_file"
+    else
+        wget -qO "$temp_file" "$url"
+    fi
+    
+    # Parse versions from the HTML
+    # Look for downloadBox entries and extract version numbers
+    local versions=$(grep -oE 'go[0-9]+\.[0-9]+(\.[0-9]+)?' "$temp_file" | sort -Vr | uniq)
+    
+    if [[ -z "$versions" ]]; then
+        echo "Error: Could not fetch version list"
+        rm -f "$temp_file"
+        return 1
+    fi
+    
+    # Get current stable version (usually the first one)
+    local stable_version=$(echo "$versions" | head -1)
+    
+    echo "Available Go versions:"
+    echo "---------------------"
+    
+    # Display versions with markers
+    local count=0
+    while IFS= read -r version; do
+        if [[ "$version" == "$stable_version" ]]; then
+            echo "  $version (latest stable)"
+        else
+            echo "  $version"
+        fi
+        count=$((count + 1))
+        
+        # Show only first 20 versions by default
+        if [[ $count -ge 20 ]]; then
+            local remaining=$(echo "$versions" | wc -l)
+            remaining=$((remaining - 20))
+            if [[ $remaining -gt 0 ]]; then
+                echo ""
+                echo "  ... and $remaining more versions"
+                echo ""
+                echo "Note: Showing top 20 versions. Visit https://go.dev/dl/ for complete list."
+            fi
+            break
+        fi
+    done <<< "$versions"
+    
+    rm -f "$temp_file"
+    
+    echo ""
+    echo "Installation:"
+    echo "------------"
+    echo "To install a version, use:"
+    echo "  gman install <version>         # Uses official method"
+    echo "  gman install <version> direct  # Uses direct download"
+    echo ""
+    echo "Example:"
+    echo "  gman install ${stable_version#go}"
+}
+
 # Function to safely remove directory
 safe_remove_dir() {
     local dir="$1"
@@ -1210,6 +1295,9 @@ main() {
             ;;
         list)
             list_installed_versions
+            ;;
+        list-available)
+            list_available_versions
             ;;
         set-default)
             if [[ $# -eq 0 ]]; then

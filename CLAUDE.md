@@ -106,6 +106,9 @@ gman uninstall 1.23.9
 # List installed versions
 gman list
 
+# List available versions to install
+gman list-available
+
 # Set default version
 gman set-default 1.23.9
 
@@ -117,6 +120,7 @@ gman version
 ```
 
 ## Future Considerations
-- Consider adding version listing from go.dev
 - Possible integration with go.mod for project-specific versions
 - Enhanced conflict resolution for system Go installations
+- Add support for beta/RC versions
+- Cache available versions list for offline use
