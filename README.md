@@ -134,11 +134,19 @@ Run the automated test suite to verify gman works correctly:
 ./test-go-scripts.sh
 ```
 
-The test script will:
-- Test both installation methods
-- Verify correct version installation
-- Test reinstallation scenarios
-- Test the set-default functionality
+The test suite includes:
+- `test-go-scripts.sh` - Main installation and functionality tests
+- `test-path-setup.sh` - PATH configuration tests
+- `test-list-available.sh` - Version listing tests
+- `test-distro-detection.sh` - Linux distribution detection tests
+- `test-alpine-detection.sh` - Alpine/musl libc detection tests
+
+These tests verify:
+- Both installation methods (official and direct)
+- Correct version installation
+- Reinstallation scenarios
+- Set-default functionality
+- Distribution detection accuracy
 - Clean up test installations
 
 ## How It Works

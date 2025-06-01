@@ -136,7 +136,7 @@ jobs:
         go-version: '1.21'
     
     - name: Make scripts executable
-      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh
+      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh test-alpine-detection.sh test-distro-detection.sh
       if: runner.os != 'Windows'
     
     - name: Run PATH setup tests (Unix)
@@ -151,6 +151,14 @@ jobs:
       run: ./test-list-available.sh
       if: runner.os != 'Windows'
     
+    - name: Run distribution detection tests (Unix)
+      run: ./test-distro-detection.sh
+      if: runner.os != 'Windows'
+    
+    - name: Run Alpine detection tests (Unix)
+      run: ./test-alpine-detection.sh
+      if: runner.os != 'Windows'
+    
     - name: Run PATH setup tests (Windows)
       run: ./test-path-setup.sh
       shell: bash
@@ -163,5 +171,15 @@ jobs:
     
     - name: Run list-available tests (Windows)
       run: ./test-list-available.sh
+      shell: bash
+      if: runner.os == 'Windows'
+    
+    - name: Run distribution detection tests (Windows)
+      run: ./test-distro-detection.sh
+      shell: bash
+      if: runner.os == 'Windows'
+    
+    - name: Run Alpine detection tests (Windows)
+      run: ./test-alpine-detection.sh
       shell: bash
       if: runner.os == 'Windows'
