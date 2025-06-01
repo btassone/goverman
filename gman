@@ -586,7 +586,7 @@ fix_path_ordering() {
         echo "Running in non-interactive mode (CI detected). Skipping PATH fix." >&2
         echo "To fix PATH ordering manually, add this to your shell profile:" >&2
         echo "  export PATH=\"$gobin:\$PATH\"" >&2
-        return 1
+        return 0  # Don't fail in CI mode - the installation was successful
     fi
     
     echo "Would you like to fix this by prepending $gobin to your PATH?" >&2
