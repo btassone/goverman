@@ -666,9 +666,19 @@ set_default_version() {
     if [[ -L "$go_link" ]]; then
         echo "Current default: $(readlink "$go_link" | xargs basename)" >&2
     elif [[ -f "$go_link" ]]; then
-        echo "Warning: $go_link exists but is not a symlink" >&2
-        echo "Please remove it manually before setting a default version" >&2
-        return 1
+        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$MSYSTEM" ]]; then
+            # On Windows, this is expected - we'll overwrite the wrapper script
+            if grep -q "exec.*go[0-9]" "$go_link" 2>/dev/null; then
+                local current_default=$(grep "exec" "$go_link" 2>/dev/null | grep -o "go[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+                if [[ -n "$current_default" ]]; then
+                    echo "Current default: $current_default" >&2
+                fi
+            fi
+        else
+            echo "Warning: $go_link exists but is not a symlink" >&2
+            echo "Please remove it manually before setting a default version" >&2
+            return 1
+        fi
     fi
     
     # Create the symlink or wrapper script
