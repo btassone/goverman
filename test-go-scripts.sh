@@ -227,8 +227,13 @@ else
         "test -L \"$HOME/go/bin/go\""
 fi
 
+# Debug: Print the output of gman list
+echo "Debug: gman list output:"
+"$GMAN_SCRIPT" list
+
+# Verify the default marker - escape the brackets properly for grep
 run_test "Verify list shows default marker" \
-    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION.*\[DEFAULT\]\""
+    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION.*\\[DEFAULT\\]\""
 
 # Test 5: Install another version with --default flag
 echo "=== TEST 5: Install with --default flag ==="
@@ -243,7 +248,7 @@ run_test "Verify go$TEST_VERSION2 is now default" \
     "go version | grep -q \"go$TEST_VERSION2\""
 
 run_test "Verify list shows new default" \
-    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\[DEFAULT\]\""
+    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\\[DEFAULT\\]\""
 
 # Test 6: Uninstall default version
 echo "=== TEST 6: Uninstall default version ==="

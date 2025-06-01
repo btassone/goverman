@@ -35,9 +35,11 @@ jobs:
       if: runner.os != 'Windows'
     
     - name: Run PATH setup tests (Windows)
-      run: bash ./test-path-setup.sh
+      run: ./test-path-setup.sh
+      shell: bash
       if: runner.os == 'Windows'
     
     - name: Run installation tests (Windows)
-      run: bash ./test-go-scripts.sh
+      run: ./test-go-scripts.sh
+      shell: bash
       if: runner.os == 'Windows'
