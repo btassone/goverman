@@ -88,6 +88,30 @@ detect_arch() {
     esac
 }
 
+# Function to detect Linux distribution
+detect_linux_distro() {
+    if [[ -f /etc/os-release ]]; then
+        # Most modern Linux distributions have /etc/os-release
+        . /etc/os-release
+        echo "${ID:-unknown}"
+    elif [[ -f /etc/redhat-release ]]; then
+        # Older RHEL-based systems
+        if grep -q "AlmaLinux" /etc/redhat-release; then
+            echo "almalinux"
+        elif grep -q "CentOS" /etc/redhat-release; then
+            echo "centos"
+        elif grep -q "Red Hat" /etc/redhat-release; then
+            echo "rhel"
+        else
+            echo "rhel-based"
+        fi
+    elif [[ -f /etc/alpine-release ]]; then
+        echo "alpine"
+    else
+        echo "unknown"
+    fi
+}
+
 # Function to detect if using musl libc (Alpine Linux)
 detect_musl() {
     # Check if ldd exists and check for musl
@@ -449,6 +473,10 @@ install_direct() {
     echo "Installing Go ${version} using direct method..."
     echo "=============================================="
     echo "OS: $os"
+    if [[ "$os" == "linux" ]]; then
+        local distro=$(detect_linux_distro)
+        echo "Distribution: $distro"
+    fi
     echo "Architecture: $arch"
     echo "Musl libc (Alpine): $is_musl"
     echo "Download URL: $url"

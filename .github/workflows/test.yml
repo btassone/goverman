@@ -20,6 +20,12 @@ jobs:
           - os: ubuntu-latest
             name: alpine-latest
             container: alpine:latest
+          - os: ubuntu-latest
+            name: almalinux-9
+            container: almalinux:9
+          - os: ubuntu-latest
+            name: almalinux-8
+            container: almalinux:8
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     
@@ -33,8 +39,24 @@ jobs:
         mkdir -p $HOME/go/bin
         echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.profile
     
+    - name: Install AlmaLinux dependencies
+      if: startsWith(matrix.container || '', 'almalinux')
+      run: |
+        dnf install -y epel-release
+        dnf install -y bash git curl wget tar gzip which
+        # Install Go from EPEL or download it
+        dnf install -y golang || {
+          # If Go is not in repos, download and install it
+          curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+          tar -C /usr/local -xzf /tmp/go.tar.gz
+          echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
+          export PATH=/usr/local/go/bin:$PATH
+        }
+        mkdir -p $HOME/go/bin
+        echo "export PATH=$HOME/go/bin:$PATH" >> $HOME/.bash_profile
+    
     - name: Set up Go
-      if: matrix.container != 'alpine:latest'
+      if: matrix.container == null
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'

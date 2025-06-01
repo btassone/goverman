@@ -165,7 +165,8 @@ The test script will:
 ### Operating Systems
 
 - **Linux**
-  - Standard distributions (Ubuntu, Debian, Fedora, CentOS, etc.)
+  - Standard distributions (Ubuntu, Debian, Fedora, etc.)
+  - Enterprise distributions (AlmaLinux, CentOS, RHEL, Rocky Linux)
   - Alpine Linux (musl libc) - with limitations*
 - **macOS**
   - macOS 12 (Monterey) and later
@@ -179,6 +180,15 @@ The test script will:
 - **amd64** (x86_64) - Intel/AMD 64-bit processors
 - **arm64** (aarch64) - ARM 64-bit processors (Apple Silicon, AWS Graviton, etc.)
 - **armv6l** - ARM 32-bit processors (Raspberry Pi, etc.)
+
+### Distribution Detection
+
+Goverman automatically detects your Linux distribution and displays it during installation. This helps with:
+- Diagnosing compatibility issues
+- Providing distribution-specific recommendations
+- Better support and troubleshooting
+
+Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, Alpine, and more.
 
 ### Notes on Alpine Linux Support
 
