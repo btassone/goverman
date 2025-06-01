@@ -791,8 +791,11 @@ list_installed_versions() {
     elif [[ -f "$gobin/go" ]] && [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || -n "$MSYSTEM" ]]; then
         # On Windows, check if it's a wrapper script
         # Extract the version from the wrapper script by looking for exec command
-        if grep -q "exec.*go[0-9]" "$gobin/go" 2>/dev/null; then
-            default_symlink=$(grep "exec" "$gobin/go" 2>/dev/null | grep -o "go[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+        # The exec line contains the full path, so we need to extract just the binary name
+        if grep -q "exec" "$gobin/go" 2>/dev/null; then
+            local exec_line=$(grep "exec" "$gobin/go" 2>/dev/null | head -1)
+            # Extract the go binary name from the path (handles both / and \ separators)
+            default_symlink=$(echo "$exec_line" | sed 's|.*[/\\]||' | grep -o "go[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
         fi
     fi
     
