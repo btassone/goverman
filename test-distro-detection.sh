@@ -47,6 +47,12 @@ if [[ -f /etc/alpine-release ]]; then
     echo "Alpine version: $(cat /etc/alpine-release)"
 fi
 
+echo ""
+echo "/etc/gentoo-release exists: $(test -f /etc/gentoo-release && echo "yes" || echo "no")"
+if [[ -f /etc/gentoo-release ]]; then
+    echo "Gentoo version: $(cat /etc/gentoo-release)"
+fi
+
 # Check package managers
 echo ""
 echo "Package Managers:"
@@ -57,6 +63,7 @@ echo "apt command exists: $(command -v apt >/dev/null 2>&1 && echo "yes (Debian/
 echo "apk command exists: $(command -v apk >/dev/null 2>&1 && echo "yes (Alpine)" || echo "no")"
 echo "zypper command exists: $(command -v zypper >/dev/null 2>&1 && echo "yes (openSUSE/SLES)" || echo "no")"
 echo "pacman command exists: $(command -v pacman >/dev/null 2>&1 && echo "yes (Arch/Manjaro)" || echo "no")"
+echo "emerge command exists: $(command -v emerge >/dev/null 2>&1 && echo "yes (Gentoo/Funtoo)" || echo "no")"
 
 # Test compatibility message
 echo ""
@@ -85,6 +92,11 @@ case "$distro" in
         echo "✓ Arch-based distribution detected - using glibc"
         echo "Official Go binaries should work without issues"
         echo "Note: Arch Linux uses pacman package manager"
+        ;;
+    gentoo|funtoo)
+        echo "✓ Gentoo-based distribution detected - using glibc"
+        echo "Official Go binaries should work without issues"
+        echo "Note: Gentoo uses Portage/emerge package manager"
         ;;
     *)
         echo "✓ Standard Linux detected - using glibc"
