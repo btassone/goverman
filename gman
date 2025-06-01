@@ -488,30 +488,47 @@ install_direct() {
     
     # Download the binary
     echo "Downloading $filename..."
-    local download_status=0
+    local download_status=1
+    local downloaded=false
     
-    if command -v wget >/dev/null 2>&1; then
-        echo "Using wget..."
-        if ! wget -q --show-progress -O "$temp_dir/$filename" "$url"; then
-            download_status=$?
-            echo "Error: wget failed with status $download_status"
-            echo "URL attempted: $url"
-        fi
-    elif command -v curl >/dev/null 2>&1; then
+    # Try curl first (more reliable across distributions)
+    if command -v curl >/dev/null 2>&1; then
         echo "Using curl..."
-        if ! curl -L --progress-bar -o "$temp_dir/$filename" "$url"; then
+        if curl -L --progress-bar -o "$temp_dir/$filename" "$url"; then
+            download_status=0
+            downloaded=true
+        else
             download_status=$?
-            echo "Error: curl failed with status $download_status"
-            echo "URL attempted: $url"
+            echo "Warning: curl failed with status $download_status"
         fi
-    else
-        echo "Error: Neither wget nor curl is available for download"
+    fi
+    
+    # If curl failed or isn't available, try wget
+    if [[ "$downloaded" == "false" ]] && command -v wget >/dev/null 2>&1; then
+        echo "Trying wget..."
+        if wget -q --show-progress -O "$temp_dir/$filename" "$url" 2>&1; then
+            download_status=0
+            downloaded=true
+        else
+            download_status=$?
+            echo "Warning: wget failed with status $download_status"
+        fi
+    fi
+    
+    # Check if download succeeded
+    if [[ "$downloaded" == "false" ]]; then
+        echo "Error: Failed to download Go $version"
+        echo "URL attempted: $url"
+        if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+            echo "Neither curl nor wget is available for download"
+        fi
+        echo "Please check your internet connection and try again"
         exit 1
     fi
     
-    if [[ $download_status -ne 0 ]]; then
-        echo "Error: Failed to download Go $version"
-        echo "Please check your internet connection and try again"
+    # Verify the downloaded file exists and is not empty
+    if [[ ! -f "$temp_dir/$filename" ]] || [[ ! -s "$temp_dir/$filename" ]]; then
+        echo "Error: Downloaded file is missing or empty"
         exit 1
     fi
     
