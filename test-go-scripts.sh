@@ -277,6 +277,68 @@ echo "=== TEST 8: Final cleanup ==="
 run_test "Final uninstall go$TEST_VERSION" \
     "\"$GMAN_SCRIPT\" uninstall \"$TEST_VERSION\""
 
+# Test 9: List available versions
+echo "=== TEST 9: List available versions ==="
+
+# Test default behavior (should show 20 versions)
+echo "Testing: List available versions (default)"
+output=$("$GMAN_SCRIPT" list-available 2>&1)
+version_count=$(echo "$output" | grep -cE "^  go[0-9]+\.[0-9]+")
+
+if [[ $version_count -eq 20 ]]; then
+    echo "✅ PASS: List available versions shows 20 versions"
+else
+    echo "❌ FAIL: Expected 20 versions, got $version_count"
+    exit 1
+fi
+
+# Check for the "more versions" message
+if echo "$output" | grep -q "and .* more versions"; then
+    echo "✅ PASS: Shows remaining version count"
+else
+    echo "❌ FAIL: Missing remaining version count message"
+    exit 1
+fi
+
+# Check for --all suggestion
+if echo "$output" | grep -q "gman list-available --all"; then
+    echo "✅ PASS: Suggests --all flag for complete list"
+else
+    echo "❌ FAIL: Missing --all flag suggestion"
+    exit 1
+fi
+
+# Test 10: List all available versions
+echo "=== TEST 10: List all available versions ==="
+
+echo "Testing: List available versions --all"
+output_all=$("$GMAN_SCRIPT" list-available --all 2>&1)
+version_count_all=$(echo "$output_all" | grep -cE "^  go[0-9]+\.[0-9]+")
+
+if [[ $version_count_all -gt 20 ]]; then
+    echo "✅ PASS: List available --all shows more than 20 versions ($version_count_all total)"
+else
+    echo "❌ FAIL: --all flag should show more than 20 versions, got $version_count_all"
+    exit 1
+fi
+
+# Check that --all doesn't show the "more versions" message
+if echo "$output_all" | grep -q "and .* more versions"; then
+    echo "❌ FAIL: --all flag should not show 'more versions' message"
+    exit 1
+else
+    echo "✅ PASS: --all flag shows all versions without truncation message"
+fi
+
+# Test 11: Check for latest stable marker
+echo "Testing: Latest stable version marker"
+if echo "$output" | grep -q "(latest stable)"; then
+    echo "✅ PASS: Shows latest stable version marker"
+else
+    echo "❌ FAIL: Missing latest stable version marker"
+    exit 1
+fi
+
 echo "================================"
 echo "🎉 All tests completed successfully!"
 echo "The gman tool is working properly."
