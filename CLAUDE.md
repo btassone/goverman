@@ -95,6 +95,23 @@ Based on git commits, we've recently worked on:
   - Fixed getent fallback for systems without it
 - Created github-actions-fixes.md documenting all issues and solutions
 
+### 2025-06-01 Session - Alpine Linux Support
+- Added comprehensive Alpine Linux support to goverman
+- Implemented Alpine/musl libc detection:
+  - Created `detect_musl()` function that checks for musl via ldd, /etc/alpine-release, or apk
+  - Both installation methods now detect and warn Alpine users about compatibility
+- Updated CI/CD pipeline:
+  - Initially added separate Alpine test job, then refactored to unified matrix
+  - Alpine tests run in alpine:latest container with all dependencies
+  - All tests passing on Alpine Linux
+- Documentation improvements:
+  - Added comprehensive platform support section to README
+  - Documented all supported operating systems and architectures
+  - Added missing `list-available` command documentation
+  - Included Alpine Linux compatibility notes and recommendations
+- Created test-alpine-detection.sh for verification
+- Released v1.6.0 with full Alpine Linux support
+
 ## Usage Reminders
 ```bash
 # Install a Go version
