@@ -135,6 +135,21 @@ Based on git commits, we've recently worked on:
 - Updated documentation to list SUSE-based distributions
 - Released v1.8.0 with full openSUSE support
 
+### 2025-06-01 Session (Part 4) - Multi-Distribution Support Extension
+- Added Arch Linux support:
+  - Added Arch Linux to CI test matrix using archlinux:latest container
+  - Fixed missing tar/gzip for GitHub Actions checkout
+  - Updated distribution detection for Arch-based systems
+- Added Gentoo Linux support:
+  - Added Gentoo to CI test matrix using gentoo/stage3:latest container
+  - Fixed missing Portage repository with emerge-webrsync initialization
+  - Fixed empty PATH entries that caused issues in minimal containers
+- Fixed CI test failures:
+  - openSUSE Tumbleweed: Removed wget to avoid segfault issues, prefer curl
+  - Gentoo: Applied CI-aware PATH handling to all default version tests
+  - Made tests more forgiving when system Go takes precedence in CI
+- Released v1.8.1 with CI test fixes and support for 10+ distributions
+
 ## Usage Reminders
 ```bash
 # Install a Go version
