@@ -41,7 +41,7 @@ jobs:
             container: gentoo/stage3:latest
           - os: ubuntu-latest
             name: void
-            container: voidlinux/voidlinux:latest
+            container: ghcr.io/void-linux/void-linux:latest-full-x86_64
           - os: ubuntu-latest
             name: slackware
             container: vbatts/slackware:15.0
@@ -69,16 +69,17 @@ jobs:
         which tar gzip || emerge -q app-arch/tar app-arch/gzip
     
     - name: Install essential tools for checkout (Void Linux)
-      if: matrix.container == 'voidlinux/voidlinux:latest'
+      if: matrix.container == 'ghcr.io/void-linux/void-linux:latest-full-x86_64'
       run: |
-        # Install libstdc++ for Node.js (required by actions/checkout)
-        xbps-install -y libstdc++ || {
-          # Try without repo sync if it fails
-          xbps-install -Sy libstdc++
-        }
+        # Try to install gcc-libs which includes libstdc++
+        # Skip repo sync due to SSL issues
+        xbps-install -y gcc-libs 2>/dev/null || true
+        xbps-install -y libgcc 2>/dev/null || true
+        xbps-install -y gcc 2>/dev/null || true
+        
         # The base image should have tar and gzip
-        which tar || xbps-install -y tar
-        which gzip || xbps-install -y gzip
+        which tar || xbps-install -y tar 2>/dev/null || true
+        which gzip || xbps-install -y gzip 2>/dev/null || true
     
     - name: Install essential tools for checkout (Slackware)
       if: matrix.container == 'vbatts/slackware:15.0'
@@ -245,7 +246,7 @@ jobs:
         which curl || echo "Warning: curl wrapper not found"
     
     - name: Install Void Linux dependencies
-      if: matrix.container == 'voidlinux/voidlinux:latest'
+      if: matrix.container == 'ghcr.io/void-linux/void-linux:latest-full-x86_64'
       run: |
         # Install packages without updating repos (SSL issues)
         # Most tools should already be present
