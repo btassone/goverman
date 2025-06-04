@@ -776,6 +776,15 @@ install_direct() {
         else
             download_status=$?
             echo "Warning: curl failed with status $download_status"
+            # Try again with -k for SSL issues
+            if [[ $download_status -eq 60 ]] || [[ $download_status -eq 77 ]]; then
+                echo "Retrying with -k due to SSL error..."
+                if curl -kL --progress-bar -o "$temp_dir/$filename" "$url"; then
+                    download_status=0
+                    downloaded=true
+                    echo "✓ Download succeeded with -k (insecure)"
+                fi
+            fi
         fi
     fi
     
@@ -788,6 +797,15 @@ install_direct() {
         else
             download_status=$?
             echo "Warning: wget failed with status $download_status"
+            # Try again with --no-check-certificate for SSL issues
+            if [[ $download_status -eq 5 ]]; then
+                echo "Retrying with --no-check-certificate due to SSL error..."
+                if wget --no-check-certificate -q --show-progress -O "$temp_dir/$filename" "$url" 2>&1; then
+                    download_status=0
+                    downloaded=true
+                    echo "✓ Download succeeded with --no-check-certificate"
+                fi
+            fi
         fi
     fi
     
