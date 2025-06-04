@@ -1,20 +1,36 @@
+![goverman banner](banner_short.png)
+
 # goverman (Go Version Manager)
 
 [![Test Go Scripts](https://github.com/btassone/goverman/actions/workflows/test.yml/badge.svg)](https://github.com/btassone/goverman/actions/workflows/test.yml)
+[![Go Versions](https://img.shields.io/badge/Go-1.17%2B-blue.svg)](https://go.dev/dl/)
+[![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-brightgreen.svg)](https://github.com/btassone/goverman#supported-platforms)
+[![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
-A simple Go version manager that allows you to install and manage multiple Go versions on your system. Goverman provides a unified tool called `gman` to easily install, uninstall, and switch between different Go versions without affecting your system's default Go installation.
+**goverman** is a simple and powerful Go version manager that allows you to install and manage multiple Go versions on your system. Unlike other version managers, goverman provides a unified tool called `gman` to easily install, uninstall, and switch between different Go versions without affecting your system's default Go installation.
+
+## Why goverman?
+
+While tools like `gvm` (Go Version Manager) exist, many are no longer actively maintained. goverman fills this gap with:
+
+- **Active maintenance** - Regular updates and bug fixes
+- **Bootstrap capability** - Install Go on fresh systems without requiring Go
+- **Modern Go support** - Always supports the latest Go releases
+- **Simple interface** - One tool (`gman`) for all operations
+- **CI/CD friendly** - Extensively tested across 12+ OS configurations
+- **No dependencies** - Pure bash implementation, works everywhere bash does
 
 ## Overview
 
-Goverman helps developers who need to work with multiple Go versions by:
+Goverman is a Go version management tool that helps developers who need to work with multiple Go (Golang) versions by:
 - **Bootstrapping Go** on fresh systems without requiring an existing Go installation
-- Installing specific Go versions alongside your default installation
-- Managing multiple Go versions without conflicts
-- Providing easy version switching capabilities
-- Supporting multiple architectures (amd64, arm64, armv6l)
-- Offering both official and direct download installation methods
-- **Bulk uninstalling** all goverman-managed versions with one command
-- Handling broken Go installations gracefully
+- Installing specific Go SDK versions alongside your default Golang installation
+- Managing multiple Go compiler versions without conflicts
+- Providing easy Go version switching capabilities for different projects
+- Supporting multiple architectures (amd64, arm64, armv6l) across Linux, macOS, and Windows
+- Offering both official (`go install`) and direct download installation methods
+- **Bulk uninstalling** all goverman-managed Go versions with one command
+- Handling broken Go installations gracefully with automatic recovery
 
 ## Features
 
