@@ -39,6 +39,12 @@ jobs:
           - os: ubuntu-latest
             name: gentoo
             container: gentoo/stage3:latest
+          - os: ubuntu-latest
+            name: void
+            container: voidlinux/voidlinux:latest
+          - os: ubuntu-latest
+            name: slackware
+            container: vbatts/slackware:15.0
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     
@@ -59,6 +65,18 @@ jobs:
         # Gentoo stage3 should have tar and gzip already
         # Just verify they exist
         which tar gzip || emerge -q app-arch/tar app-arch/gzip
+    
+    - name: Install essential tools for checkout (Void Linux)
+      if: matrix.container == 'voidlinux/voidlinux:latest'
+      run: |
+        xbps-install -Syu xbps
+        xbps-install -y tar gzip
+    
+    - name: Install essential tools for checkout (Slackware)
+      if: matrix.container == 'vbatts/slackware:15.0'
+      run: |
+        # Slackware should have tar and gzip already
+        which tar gzip || echo "Basic tools check"
     
     - name: Configure Git (Windows only)
       if: runner.os == 'Windows'
@@ -219,6 +237,49 @@ jobs:
         which bash || echo "Warning: bash not found"
         which find || echo "Warning: find not found"
         which curl || echo "Warning: curl wrapper not found"
+    
+    - name: Install Void Linux dependencies
+      if: matrix.container == 'voidlinux/voidlinux:latest'
+      run: |
+        # Update package database
+        xbps-install -Syu
+        # Install required packages
+        xbps-install -y bash curl wget which findutils
+        # Install Go directly
+        curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+        tar -C /usr/local -xzf /tmp/go.tar.gz
+        export PATH="/usr/local/go/bin:$PATH"
+        echo "export PATH=\"/usr/local/go/bin:\$PATH\"" >> /etc/profile
+        mkdir -p $HOME/go/bin
+        echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> $HOME/.bash_profile
+    
+    - name: Install Slackware dependencies
+      if: matrix.container == 'vbatts/slackware:15.0'
+      run: |
+        # Slackware typically has most tools pre-installed
+        # Verify basic tools
+        which bash || echo "bash not found"
+        which curl || echo "curl not found" 
+        which wget || echo "wget not found"
+        which find || echo "find not found"
+        
+        # Install Go directly (Slackware doesn't have Go in base)
+        if command -v wget >/dev/null 2>&1; then
+          wget -q https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -O /tmp/go.tar.gz
+        elif command -v curl >/dev/null 2>&1; then
+          curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+        else
+          echo "Neither curl nor wget available, trying to install curl"
+          slackpkg update
+          slackpkg install curl
+          curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+        fi
+        
+        tar -C /usr/local -xzf /tmp/go.tar.gz
+        export PATH="/usr/local/go/bin:$PATH"
+        echo "export PATH=\"/usr/local/go/bin:\$PATH\"" >> /etc/profile
+        mkdir -p $HOME/go/bin
+        echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> $HOME/.bashrc
     
     - name: Cache Go installation (Windows)
       if: runner.os == 'Windows'

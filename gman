@@ -104,6 +104,8 @@ detect_linux_distro() {
         # Most modern Linux distributions have /etc/os-release
         . /etc/os-release
         echo "${ID:-unknown}"
+    elif [[ -f /etc/slackware-version ]]; then
+        echo "slackware"
     elif [[ -f /etc/redhat-release ]]; then
         # Older RHEL-based systems
         if grep -q "AlmaLinux" /etc/redhat-release; then
@@ -117,6 +119,9 @@ detect_linux_distro() {
         fi
     elif [[ -f /etc/alpine-release ]]; then
         echo "alpine"
+    elif command -v xbps-query >/dev/null 2>&1; then
+        # Void Linux detection by package manager
+        echo "void"
     else
         echo "unknown"
     fi
