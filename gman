@@ -177,14 +177,38 @@ detect_os() {
 get_latest_go_version() {
     local url="https://go.dev/dl/"
     local temp_file=$(mktemp)
+    local download_status=1
     
     # Check if we have curl or wget
     if command -v curl >/dev/null 2>&1; then
-        curl -sL "$url" > "$temp_file" 2>/dev/null
+        if curl -sL "$url" > "$temp_file" 2>&1; then
+            download_status=0
+        else
+            # In CI, provide more details
+            if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+                echo "Debug: curl failed to download $url" >&2
+            fi
+        fi
     elif command -v wget >/dev/null 2>&1; then
-        wget -qO "$temp_file" "$url" 2>/dev/null
+        if wget -qO "$temp_file" "$url" 2>&1; then
+            download_status=0
+        else
+            # In CI, provide more details
+            if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+                echo "Debug: wget failed to download $url" >&2
+            fi
+        fi
     else
-        echo "Error: Neither curl nor wget is available"
+        echo "Error: Neither curl nor wget is available" >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+    
+    # Check if download succeeded
+    if [[ $download_status -ne 0 ]] || [[ ! -s "$temp_file" ]]; then
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "Debug: Failed to download Go versions page (network issue?)" >&2
+        fi
         rm -f "$temp_file"
         return 1
     fi
@@ -194,7 +218,7 @@ get_latest_go_version() {
     rm -f "$temp_file"
     
     if [[ -z "$latest" ]]; then
-        echo "Error: Could not determine latest Go version"
+        echo "Error: Could not determine latest Go version" >&2
         return 1
     fi
     
