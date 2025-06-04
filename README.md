@@ -1,7 +1,7 @@
 ![goverman banner](banner_short.png)
 
 # goverman (Go Version Manager)
-
+![](banner_short.png)
 [![Test Go Scripts](https://github.com/btassone/goverman/actions/workflows/test.yml/badge.svg)](https://github.com/btassone/goverman/actions/workflows/test.yml)
 [![Go Versions](https://img.shields.io/badge/Go-1.17%2B-blue.svg)](https://go.dev/dl/)
 [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-brightgreen.svg)](https://github.com/btassone/goverman#supported-platforms)
