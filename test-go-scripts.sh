@@ -252,7 +252,7 @@ run_test "Verify list shows default marker" \
 
 # Test 5: Install another version with --default flag
 echo "=== TEST 5: Install with --default flag ==="
-TEST_VERSION2="1.21.8"
+TEST_VERSION2="1.22.1"  # Use a more recent version for better compatibility
 run_test "Install go$TEST_VERSION2 with --default flag" \
     "\"$GMAN_SCRIPT\" install \"$TEST_VERSION2\" official --default"
 
