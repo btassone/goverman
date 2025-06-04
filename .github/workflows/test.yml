@@ -52,9 +52,11 @@ jobs:
     - name: Install essential tools for checkout (openSUSE)
       if: startsWith(matrix.container || '', 'opensuse')
       run: |
+        # Install basic utilities first, including which command
+        zypper --non-interactive install which util-linux-systemd
         # tar and gzip should be pre-installed, just verify
-        command -v tar >/dev/null 2>&1 || zypper --non-interactive install tar
-        command -v gzip >/dev/null 2>&1 || zypper --non-interactive install gzip
+        which tar || zypper --non-interactive install tar
+        which gzip || zypper --non-interactive install gzip
     
     - name: Install essential tools for checkout (Arch Linux)
       if: matrix.container == 'archlinux:latest'
