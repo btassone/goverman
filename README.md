@@ -1,4 +1,4 @@
-# goverman
+# goverman (Go Version Manager)
 
 [![Test Go Scripts](https://github.com/btassone/goverman/actions/workflows/test.yml/badge.svg)](https://github.com/btassone/goverman/actions/workflows/test.yml)
 
