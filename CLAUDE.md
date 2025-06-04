@@ -4,6 +4,7 @@
 **goverman** is a Go version manager that allows installing and managing multiple Go versions on a single system. The project provides a unified tool called `gman` to easily install, uninstall, and switch between different Go versions without affecting the system's default Go installation.
 
 ## Key Features
+- **Bootstrap Go installation** on fresh systems without requiring Go
 - Install multiple Go versions side-by-side using versioned binaries (e.g., `go1.23.9`)
 - Two installation methods:
   - **Official**: Uses `go install golang.org/dl/goX.Y.Z@latest` (recommended)
@@ -11,7 +12,9 @@
 - Set any installed version as the default `go` command
 - Automatic PATH setup for different shells (bash, zsh, fish)
 - List all installed versions with clear status indicators
-- Clean uninstall of specific versions
+- List available versions from go.dev
+- Clean uninstall of specific versions or all versions at once
+- Handles broken Go installations gracefully
 
 ## Technical Implementation
 - Single bash script `gman` that handles all operations
@@ -44,10 +47,17 @@ Based on git commits, we've recently worked on:
    - Simplified user interface with single entry point
 
 ## Current State
-- The project has a comprehensive test suite (`test-go-scripts.sh`)
-- GitHub Actions CI/CD is set up for automated testing
-- All major features are implemented and working
+- The project has a comprehensive test suite with 7 test scripts
+- GitHub Actions CI/CD tests on 12+ OS configurations in parallel
+- All major features are implemented and working:
+  - Bootstrap installation without requiring Go
+  - Official and direct installation methods
+  - Version management and switching
+  - Bulk uninstall capability
+  - Cross-platform support (Linux, macOS, Windows)
 - Edge cases around PATH ordering and shell detection have been addressed
+- Handles broken Go installations gracefully
+- CI optimized for fast execution (~2 minutes for most platforms)
 
 ## Known Issues and Considerations
 - When Homebrew Go is installed, PATH ordering can cause conflicts
@@ -55,6 +65,31 @@ Based on git commits, we've recently worked on:
 - Direct installation method is provided as fallback for ARM64 CGO issues
 
 ## Session Memory
+
+### 2025-06-04 Session - Bootstrap, Uninstall-All, and CI Optimizations
+- Added `bootstrap` command for installing Go on fresh systems:
+  - Downloads Go directly without requiring existing Go installation
+  - Installs to `/usr/local/go` with automatic sudo handling
+  - Detects latest stable version automatically
+  - Handles broken Go installations gracefully
+- Added `uninstall-all` command for bulk removal:
+  - Finds all gman-installed Go versions across common directories
+  - Prompts for confirmation (auto-confirms in CI)
+  - Cleans up orphaned SDK directories
+  - Removes default symlink if present
+- Fixed Windows CI failures:
+  - Updated checks to handle broken Go installations
+  - Allow direct install method to work even when Go command exists but fails
+  - All `go env` calls now gracefully handle broken Go
+- Optimized CI performance:
+  - Gentoo: Eliminated package compilation by using Python urllib instead of emerging curl/git
+  - Windows: Parallelized 5 quick tests, added Go caching, configured Git line endings
+  - Added `fail-fast: false` to continue all tests even if one fails
+  - Fixed go.sum cache warnings by disabling module cache
+- Created new test scripts:
+  - `test-bootstrap.sh` - Tests bootstrap functionality
+  - `test-uninstall-all.sh` - Tests bulk uninstall
+- Updated version to v1.8.1
 
 ### 2025-05-29 Session (Part 1)
 - Explored implementing a memory system for Claude sessions
@@ -152,17 +187,21 @@ Based on git commits, we've recently worked on:
 
 ## Usage Reminders
 ```bash
+# Bootstrap Go on a fresh system
+gman bootstrap                  # Install latest stable Go
+gman bootstrap 1.23.9           # Install specific version
+
 # Install a Go version
 gman install 1.23.9 [official|direct] [--default]
 
-# Uninstall a version
-gman uninstall 1.23.9
+# Uninstall versions
+gman uninstall 1.23.9           # Remove specific version
+gman uninstall-all              # Remove all gman-managed versions
 
-# List installed versions
-gman list
-
-# List available versions to install
-gman list-available
+# List versions
+gman list                       # List installed versions
+gman list-available             # List recent available versions
+gman list-available --all       # List all available versions
 
 # Set default version
 gman set-default 1.23.9
@@ -172,6 +211,12 @@ gman version
 
 # Run tests
 ./test-go-scripts.sh
+./test-bootstrap.sh
+./test-uninstall-all.sh
+./test-path-setup.sh
+./test-list-available.sh
+./test-distro-detection.sh
+./test-alpine-detection.sh
 ```
 
 ## Future Considerations

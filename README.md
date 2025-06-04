@@ -7,11 +7,48 @@ A simple Go version manager that allows you to install and manage multiple Go ve
 ## Overview
 
 Goverman helps developers who need to work with multiple Go versions by:
+- **Bootstrapping Go** on fresh systems without requiring an existing Go installation
 - Installing specific Go versions alongside your default installation
 - Managing multiple Go versions without conflicts
 - Providing easy version switching capabilities
 - Supporting multiple architectures (amd64, arm64, armv6l)
 - Offering both official and direct download installation methods
+- **Bulk uninstalling** all goverman-managed versions with one command
+- Handling broken Go installations gracefully
+
+## Features
+
+### 🚀 Bootstrap Installation
+Install Go on fresh systems without any prerequisites:
+```bash
+gman bootstrap          # Latest stable version
+gman bootstrap 1.23.9   # Specific version
+```
+
+### 📦 Multiple Installation Methods
+- **Official**: Uses `go install` (requires existing Go)
+- **Direct**: Downloads binaries from go.dev (works without Go)
+
+### 🔄 Version Management
+- Install multiple versions side-by-side
+- Switch between versions easily
+- Set any version as the default `go` command
+- List all installed versions with status indicators
+
+### 🗑️ Clean Uninstallation
+- Remove individual versions: `gman uninstall 1.23.9`
+- Remove all versions at once: `gman uninstall-all`
+
+### 🌍 Cross-Platform Support
+- Linux (12+ distributions tested)
+- macOS (Intel & Apple Silicon)
+- Windows (via Git Bash/WSL)
+- Multiple architectures: amd64, arm64, armv6l
+
+### 🛡️ Robust Error Handling
+- Handles broken Go installations gracefully
+- Detects and warns about PATH conflicts
+- Automatic fallback from official to direct method
 
 ## Prerequisites
 
@@ -25,9 +62,15 @@ Goverman helps developers who need to work with multiple Go versions by:
 Clone this repository:
 
 ```bash
-git clone https://github.com/yourusername/goverman.git
+git clone https://github.com/btassone/goverman.git
 cd goverman
 chmod +x gman
+```
+
+Add to your PATH:
+```bash
+sudo ln -s $(pwd)/gman /usr/local/bin/gman
+# Or add the goverman directory to your PATH
 ```
 
 ## Shell Support
@@ -193,24 +236,34 @@ The test suite includes:
 - `test-list-available.sh` - Version listing tests
 - `test-distro-detection.sh` - Linux distribution detection tests
 - `test-alpine-detection.sh` - Alpine/musl libc detection tests
+- `test-bootstrap.sh` - Bootstrap command functionality tests
+- `test-uninstall-all.sh` - Bulk uninstall functionality tests
 
 These tests verify:
+- Bootstrap installation on fresh systems
 - Both installation methods (official and direct)
 - Correct version installation
 - Reinstallation scenarios
 - Set-default functionality
 - Distribution detection accuracy
+- Bulk uninstall operations
+- Handling of broken Go installations
 - Clean up test installations
 
 ## How It Works
 
 1. **gman**: A unified tool that combines all functionality:
+   - **bootstrap**: Installs Go on fresh systems without requiring existing Go
+     - Downloads directly from go.dev
+     - Installs to `/usr/local/go`
+     - Configures PATH automatically
    - **install**: Creates versioned Go binaries (e.g., `go1.23.9`)
      - Installs to `$GOBIN` or `$GOPATH/bin`
      - Sets up PATH if needed
      - Supports multiple architectures automatically
      - Can optionally set the installed version as default
    - **uninstall**: Removes the versioned binary and cleans up the associated GOROOT directory
+   - **uninstall-all**: Removes all goverman-managed Go versions at once
    - **list**: Shows all installed Go versions and identifies the default
    - **set-default**: Creates a symlink to use a specific version as the default `go` command
    - **help**: Shows usage information
@@ -266,16 +319,18 @@ Alpine Linux uses musl libc instead of glibc, which can affect Go binary compati
 
 Goverman has comprehensive test coverage across multiple platforms:
 - Automated CI/CD tests run on every push and pull request
-- Tests run on 10+ different OS configurations including:
+- Tests complete in ~2 minutes for most platforms
+- Tests run on 12+ different OS configurations including:
   - Ubuntu (latest, 22.04)
-  - macOS (latest Apple Silicon, Intel)
-  - Windows (via Git Bash)
+  - macOS (latest, 13)
+  - Windows (latest via Git Bash)
   - Alpine Linux (musl libc)
   - AlmaLinux 8 & 9
   - openSUSE Leap & Tumbleweed
   - Arch Linux
   - Gentoo
-- Run tests locally with `./test-go-scripts.sh`
+- All tests run in parallel with `fail-fast: false` for complete results
+- Run tests locally with any of the test scripts listed above
 
 ## Contributing
 
