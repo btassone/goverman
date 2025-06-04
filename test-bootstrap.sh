@@ -14,8 +14,9 @@ echo ""
 HAS_GO="no"
 if command -v go >/dev/null 2>&1; then
     HAS_GO="yes"
-    ORIGINAL_GO_VERSION=$(go version)
-    ORIGINAL_GO_PATH=$(which go)
+    # Try to get version, but handle cases where go command fails
+    ORIGINAL_GO_VERSION=$(go version 2>&1 || echo "version check failed")
+    ORIGINAL_GO_PATH=$(which go 2>&1 || echo "path check failed")
     echo "Note: Go is already installed on this system"
     echo "  Version: $ORIGINAL_GO_VERSION"
     echo "  Path: $ORIGINAL_GO_PATH"
@@ -36,9 +37,16 @@ echo "Test 2: Test bootstrap with already installed Go"
 echo "------------------------------------------------"
 if [[ "$HAS_GO" == "yes" ]]; then
     echo "Running: ./gman bootstrap"
-    ./gman bootstrap 2>&1 | head -20 || true
-    echo ""
-    echo "✓ Bootstrap correctly detected existing Go installation"
+    # Only run if the go command actually works
+    if go version >/dev/null 2>&1; then
+        ./gman bootstrap 2>&1 | head -20 || true
+        echo ""
+        echo "✓ Bootstrap correctly detected existing Go installation"
+    else
+        echo "Go command exists but is not working properly"
+        echo "This may be due to a broken installation or PATH issues"
+        echo "Bootstrap would be appropriate in this case"
+    fi
 else
     echo "Skipping - Go not installed"
 fi

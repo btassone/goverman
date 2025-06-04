@@ -206,13 +206,24 @@ bootstrap_go() {
     
     # Check if Go is already installed
     if command -v go >/dev/null 2>&1; then
-        echo "Go is already installed on this system:"
-        echo "  Version: $(go version)"
-        echo "  Location: $(which go)"
-        echo ""
-        echo "The bootstrap command is meant for fresh systems without Go."
-        echo "Use 'gman install <version>' to install additional Go versions."
-        exit 0
+        # Check if go command actually works
+        if go version >/dev/null 2>&1; then
+            echo "Go is already installed on this system:"
+            echo "  Version: $(go version)"
+            echo "  Location: $(which go)"
+            echo ""
+            echo "The bootstrap command is meant for fresh systems without Go."
+            echo "Use 'gman install <version>' to install additional Go versions."
+            exit 0
+        else
+            echo "Warning: Go command exists but is not working properly"
+            echo "  Location: $(which go)"
+            echo "  Error: $(go version 2>&1 || echo "Failed to run go version")"
+            echo ""
+            echo "This appears to be a broken Go installation."
+            echo "Proceeding with bootstrap to install a working Go..."
+            echo ""
+        fi
     fi
     
     # If no version specified, get latest
@@ -396,6 +407,19 @@ check_go_installed() {
         echo "Or visit: https://go.dev/doc/install"
         exit 1
     fi
+    
+    # Check if go command actually works (not just exists)
+    if ! go version >/dev/null 2>&1; then
+        echo "Error: Go command exists but is not working properly."
+        echo "This may be due to a broken installation or PATH issues."
+        echo ""
+        echo "To fix this, you can:"
+        echo "  1. Use 'gman bootstrap' to install a fresh Go"
+        echo "  2. Fix your existing Go installation"
+        echo "  3. Check your PATH environment variable"
+        exit 1
+    fi
+    
     echo "✓ Go is installed: $(go version)"
 }
 
