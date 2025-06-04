@@ -119,9 +119,6 @@ detect_linux_distro() {
         fi
     elif [[ -f /etc/alpine-release ]]; then
         echo "alpine"
-    elif command -v xbps-query >/dev/null 2>&1; then
-        # Void Linux detection by package manager
-        echo "void"
     else
         echo "unknown"
     fi

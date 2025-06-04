@@ -70,7 +70,6 @@ echo "apk command exists: $(command -v apk >/dev/null 2>&1 && echo "yes (Alpine)
 echo "zypper command exists: $(command -v zypper >/dev/null 2>&1 && echo "yes (openSUSE/SLES)" || echo "no")"
 echo "pacman command exists: $(command -v pacman >/dev/null 2>&1 && echo "yes (Arch/Manjaro)" || echo "no")"
 echo "emerge command exists: $(command -v emerge >/dev/null 2>&1 && echo "yes (Gentoo/Funtoo)" || echo "no")"
-echo "xbps-query command exists: $(command -v xbps-query >/dev/null 2>&1 && echo "yes (Void Linux)" || echo "no")"
 echo "slackpkg command exists: $(command -v slackpkg >/dev/null 2>&1 && echo "yes (Slackware)" || echo "no")"
 
 # Test compatibility message

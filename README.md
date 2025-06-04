@@ -287,7 +287,7 @@ These tests verify:
   - SUSE-based distributions (openSUSE Leap, openSUSE Tumbleweed, SLES)
   - Arch-based distributions (Arch Linux, Manjaro, EndeavourOS)
   - Source-based distributions (Gentoo, Funtoo)
-  - Independent distributions (Void Linux, Slackware)
+  - Independent distributions (Slackware)
   - Alpine Linux (musl libc) - with limitations*
 - **macOS**
   - macOS 12 (Monterey) and later
@@ -309,7 +309,7 @@ Goverman automatically detects your Linux distribution and displays it during in
 - Providing distribution-specific recommendations
 - Better support and troubleshooting
 
-Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, openSUSE, SLES, Arch Linux, Gentoo, Alpine, Void Linux, Slackware, and more.
+Detected distributions include: Ubuntu, Debian, Fedora, AlmaLinux, CentOS, RHEL, Rocky Linux, openSUSE, SLES, Arch Linux, Gentoo, Alpine, Slackware, and more.
 
 ### Notes on Alpine Linux Support
 
@@ -324,7 +324,7 @@ Alpine Linux uses musl libc instead of glibc, which can affect Go binary compati
 Goverman has comprehensive test coverage across multiple platforms:
 - Automated CI/CD tests run on every push and pull request
 - Tests complete in ~2 minutes for most platforms
-- Tests run on 14+ different OS configurations including:
+- Tests run on 12+ different OS configurations including:
   - Ubuntu (latest, 22.04)
   - macOS (latest, 13)
   - Windows (latest via Git Bash)
@@ -333,7 +333,6 @@ Goverman has comprehensive test coverage across multiple platforms:
   - openSUSE Leap & Tumbleweed
   - Arch Linux
   - Gentoo
-  - Void Linux
   - Slackware
 - All tests run in parallel with `fail-fast: false` for complete results
 - Run tests locally with any of the test scripts listed above

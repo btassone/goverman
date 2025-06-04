@@ -40,11 +40,6 @@ jobs:
             name: gentoo
             container: gentoo/stage3:latest
           - os: ubuntu-latest
-            name: void
-            container: 
-              image: ghcr.io/void-linux/void-linux:latest-full-x86_64
-              options: --user root
-          - os: ubuntu-latest
             name: slackware
             container: vbatts/slackware:15.0
     runs-on: ${{ matrix.os }}
@@ -72,24 +67,6 @@ jobs:
         # Just verify they exist
         which tar gzip || emerge -q app-arch/tar app-arch/gzip
     
-    - name: Install essential tools for checkout (Void Linux)
-      if: matrix.name == 'void'
-      run: |
-        # Install libstdc++ for Node.js (required by GitHub Actions)
-        # Try multiple package names that might contain libstdc++
-        xbps-install -y libstdc++ || true
-        xbps-install -y libstdc++-devel || true
-        xbps-install -y gcc-libs || true
-        xbps-install -y libgcc || true
-        
-        # Also try to create a symlink if the library exists with a different name
-        if [ -f /usr/lib/libstdc++.so.6.* ]; then
-          ln -sf /usr/lib/libstdc++.so.6.* /usr/lib/libstdc++.so.6 || true
-        fi
-        
-        # The base image should have tar and gzip
-        which tar || xbps-install -y tar || true
-        which gzip || xbps-install -y gzip || true
     
     - name: Install essential tools for checkout (Slackware)
       if: matrix.container == 'vbatts/slackware:15.0'
@@ -104,23 +81,7 @@ jobs:
         git config --global core.eol lf
       shell: cmd
     
-    - name: Checkout code (Void Linux manual)
-      if: matrix.name == 'void'
-      run: |
-        # Manual checkout for Void Linux to avoid Node.js dependency
-        # Download repository as tarball instead of using git
-        if command -v curl >/dev/null 2>&1; then
-          curl -L https://github.com/btassone/goverman/archive/${GITHUB_SHA:-main}.tar.gz | tar xz --strip-components=1
-        elif command -v wget >/dev/null 2>&1; then
-          wget -O- https://github.com/btassone/goverman/archive/${GITHUB_SHA:-main}.tar.gz | tar xz --strip-components=1
-        else
-          echo "Neither curl nor wget available, trying to install wget"
-          xbps-install -y wget || true
-          wget -O- https://github.com/btassone/goverman/archive/${GITHUB_SHA:-main}.tar.gz | tar xz --strip-components=1
-        fi
-    
     - uses: actions/checkout@v4
-      if: matrix.name != 'void'
     
     - name: Install Alpine dependencies
       if: matrix.container == 'alpine:latest'
@@ -270,29 +231,6 @@ jobs:
         which find || echo "Warning: find not found"
         which curl || echo "Warning: curl wrapper not found"
     
-    - name: Install Void Linux dependencies
-      if: matrix.name == 'void'
-      run: |
-        # Install packages without updating repos (SSL issues)
-        # Most tools should already be present
-        which bash || xbps-install -y bash
-        which findutils || xbps-install -y findutils
-        
-        # Create a simple downloader using available tools
-        if command -v wget >/dev/null 2>&1; then
-          wget --no-check-certificate https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -O /tmp/go.tar.gz
-        elif command -v curl >/dev/null 2>&1; then
-          curl -kL https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
-        else
-          # Use Python if available
-          python3 -c "import urllib.request; urllib.request.urlretrieve('https://go.dev/dl/go1.21.13.linux-amd64.tar.gz', '/tmp/go.tar.gz')"
-        fi
-        
-        tar -C /usr/local -xzf /tmp/go.tar.gz
-        export PATH="/usr/local/go/bin:$PATH"
-        echo "export PATH=\"/usr/local/go/bin:\$PATH\"" >> /etc/profile
-        mkdir -p $HOME/go/bin
-        echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> $HOME/.bash_profile
     
     - name: Install Slackware dependencies
       if: matrix.container == 'vbatts/slackware:15.0'
