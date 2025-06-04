@@ -120,20 +120,97 @@ jobs:
     - name: Install Gentoo dependencies
       if: matrix.container == 'gentoo/stage3:latest'
       run: |
-        # Initialize Portage repository
-        emerge-webrsync
-        # Install required packages
-        emerge -q app-shells/bash dev-vcs/git net-misc/curl net-misc/wget sys-apps/which sys-apps/findutils
-        # Install Go - download directly since emerge would take too long to compile
-        curl -L https://go.dev/dl/go1.21.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+        # Gentoo stage3 has basic tools, but we need a way to download
+        # Use Python's urllib (which is included in stage3) to download Go
+        cat > /tmp/download.py << 'EOF'
+        import urllib.request
+        import sys
+        url = sys.argv[1]
+        output = sys.argv[2]
+        print(f"Downloading {url} to {output}")
+        urllib.request.urlretrieve(url, output)
+        print("Download complete")
+        EOF
+        
+        # Download Go using Python
+        python3 /tmp/download.py https://go.dev/dl/go1.21.13.linux-amd64.tar.gz /tmp/go.tar.gz
+        
+        # Install Go
         tar -C /usr/local -xzf /tmp/go.tar.gz
-        # Clean up PATH (remove empty entries) and set it properly
+        rm /tmp/go.tar.gz /tmp/download.py
+        
+        # Set up PATH
         export PATH="/usr/local/go/bin:${PATH//::/:}"
         export PATH="${PATH#:}"
         export PATH="${PATH%:}"
         echo "export PATH=\"/usr/local/go/bin:\$PATH\"" >> /etc/profile
         mkdir -p $HOME/go/bin
         echo "export PATH=\"\$HOME/go/bin:\$PATH\"" >> $HOME/.bash_profile
+        
+        # Create a minimal curl wrapper using Python for gman to use
+        cat > /usr/local/bin/curl << 'EOF'
+        #!/usr/bin/env python3
+        import urllib.request
+        import sys
+        import os
+        
+        # Minimal curl emulation for gman's needs
+        args = sys.argv[1:]
+        output_file = None
+        url = None
+        silent = False
+        show_progress = False
+        
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg == '-o' and i + 1 < len(args):
+                output_file = args[i + 1]
+                i += 2
+            elif arg == '-O':
+                # Output to basename of URL
+                i += 1
+            elif arg in ['-s', '-sL']:
+                silent = True
+                i += 1
+            elif arg == '-L':
+                # Follow redirects (urllib does this by default)
+                i += 1
+            elif arg == '--progress-bar':
+                show_progress = True
+                i += 1
+            elif arg == '--max-time':
+                # Skip timeout for simplicity
+                i += 2
+            elif not arg.startswith('-'):
+                url = arg
+                i += 1
+            else:
+                i += 1
+        
+        if url:
+            if not output_file and '-O' in args:
+                output_file = os.path.basename(url)
+            
+            try:
+                if output_file:
+                    if not silent:
+                        print(f"Downloading {url} to {output_file}", file=sys.stderr)
+                    urllib.request.urlretrieve(url, output_file)
+                else:
+                    # Output to stdout
+                    with urllib.request.urlopen(url) as response:
+                        print(response.read().decode('utf-8'))
+            except Exception as e:
+                print(f"curl: {e}", file=sys.stderr)
+                sys.exit(1)
+        EOF
+        chmod +x /usr/local/bin/curl
+        
+        # Verify basic tools are available
+        which bash || echo "Warning: bash not found"
+        which find || echo "Warning: find not found"
+        which curl || echo "Warning: curl wrapper not found"
     
     - name: Set up Go
       if: matrix.container == null
