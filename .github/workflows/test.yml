@@ -73,15 +73,21 @@ jobs:
     - name: Install essential tools for checkout (Void Linux)
       if: matrix.container == 'ghcr.io/void-linux/void-linux:latest-full-x86_64'
       run: |
-        # Try to install gcc-libs which includes libstdc++
-        # Skip repo sync due to SSL issues
-        xbps-install -y gcc-libs 2>/dev/null || true
-        xbps-install -y libgcc 2>/dev/null || true
-        xbps-install -y gcc 2>/dev/null || true
+        # Install libstdc++ for Node.js (required by GitHub Actions)
+        # Try multiple package names that might contain libstdc++
+        xbps-install -y libstdc++ || true
+        xbps-install -y libstdc++-devel || true
+        xbps-install -y gcc-libs || true
+        xbps-install -y libgcc || true
+        
+        # Also try to create a symlink if the library exists with a different name
+        if [ -f /usr/lib/libstdc++.so.6.* ]; then
+          ln -sf /usr/lib/libstdc++.so.6.* /usr/lib/libstdc++.so.6 || true
+        fi
         
         # The base image should have tar and gzip
-        which tar || xbps-install -y tar 2>/dev/null || true
-        which gzip || xbps-install -y gzip 2>/dev/null || true
+        which tar || xbps-install -y tar || true
+        which gzip || xbps-install -y gzip || true
     
     - name: Install essential tools for checkout (Slackware)
       if: matrix.container == 'vbatts/slackware:15.0'
