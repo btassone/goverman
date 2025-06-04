@@ -704,6 +704,15 @@ install_official() {
         echo "Binary path: $install_target"
         echo "Binary exists: $(test -f "$install_target" && echo "yes" || echo "no")"
         echo "Binary executable: $(test -x "$install_target" && echo "yes" || echo "no")"
+        echo ""
+        echo "The binary was installed but the SDK download failed."
+        echo "This is a known issue with some Go versions."
+        echo "Please try the direct method instead: gman install $version direct"
+        
+        # Clean up the non-functional binary
+        echo "Cleaning up non-functional binary..."
+        rm -f "$install_target"
+        
         exit 1
     fi
 }

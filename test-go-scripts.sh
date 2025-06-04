@@ -253,37 +253,70 @@ run_test "Verify list shows default marker" \
 # Test 5: Install another version with --default flag
 echo "=== TEST 5: Install with --default flag ==="
 TEST_VERSION2="1.22.1"  # Use a more recent version for better compatibility
-# Try official method first, then fall back to direct if it fails
+
+# In some environments (like Slackware), the official method may succeed
+# but the download step might fail silently. We need to verify the installation
+# actually completed successfully.
+
 echo "Attempting to install go$TEST_VERSION2 with --default flag..."
+install_success=false
+
+# Try official method first
 if "$GMAN_SCRIPT" install "$TEST_VERSION2" official --default 2>&1 | tee /tmp/install_output.log; then
-    echo "✅ PASS: Install go$TEST_VERSION2 with --default flag (official)"
-else
-    echo "Warning: Official method failed, checking error..."
-    if grep -q "undefined: signalsToIgnore" /tmp/install_output.log 2>/dev/null || \
-       grep -q "Known compatibility issue" /tmp/install_output.log 2>/dev/null; then
-        echo "Known compatibility issue detected, trying direct method as fallback..."
+    # Installation command succeeded, but we need to verify it actually worked
+    update_path
+    if command -v "go$TEST_VERSION2" >/dev/null 2>&1 && go$TEST_VERSION2 version >/dev/null 2>&1; then
+        echo "✅ PASS: Install go$TEST_VERSION2 with --default flag (official)"
+        install_success=true
     else
-        echo "Unknown error occurred, trying direct method as fallback..."
+        echo "Warning: Installation appeared to succeed but go$TEST_VERSION2 is not functional"
+        echo "This can happen if the download step failed"
     fi
+fi
+
+# If official method didn't work completely, try direct
+if [[ "$install_success" == "false" ]]; then
+    echo "Official method incomplete or failed, trying direct method as fallback..."
     
     # Clean up any partial installation
     if command -v "go$TEST_VERSION2" >/dev/null 2>&1; then
         echo "Cleaning up partial installation..."
-        "$GMAN_SCRIPT" uninstall "$TEST_VERSION2" >/dev/null 2>&1 || true
+        rm -f "$HOME/go/bin/go$TEST_VERSION2" 2>/dev/null || true
+        rm -f "$GOBIN/go$TEST_VERSION2" 2>/dev/null || true
     fi
     
     # Now try with direct method
     if "$GMAN_SCRIPT" install "$TEST_VERSION2" direct --default; then
-        echo "✅ PASS: Install go$TEST_VERSION2 with --default flag (direct fallback)"
+        update_path
+        if command -v "go$TEST_VERSION2" >/dev/null 2>&1 && go$TEST_VERSION2 version >/dev/null 2>&1; then
+            echo "✅ PASS: Install go$TEST_VERSION2 with --default flag (direct fallback)"
+            install_success=true
+        else
+            echo "❌ FAIL: Direct method also failed to create functional installation"
+        fi
     else
-        echo "❌ FAIL: Install go$TEST_VERSION2 with --default flag (both methods failed)"
-        exit 1
+        echo "❌ FAIL: Direct method installation command failed"
     fi
 fi
+
 rm -f /tmp/install_output.log
+
+# Exit if we couldn't install the version
+if [[ "$install_success" == "false" ]]; then
+    echo "❌ FAIL: Could not install go$TEST_VERSION2 with either method"
+    exit 1
+fi
 
 # Update PATH after installation
 update_path
+
+# Verify the binary was actually installed
+if command -v "go$TEST_VERSION2" >/dev/null 2>&1; then
+    echo "Debug: go$TEST_VERSION2 found at: $(which go$TEST_VERSION2)"
+    echo "Debug: go$TEST_VERSION2 version: $(go$TEST_VERSION2 version 2>&1 || echo 'version command failed')"
+else
+    echo "Warning: go$TEST_VERSION2 binary not found after installation"
+fi
 
 # In CI, PATH ordering might prevent the default from working
 # Check if we're in CI and if PATH has conflicts
@@ -307,8 +340,14 @@ fi
 echo "Debug: gman list output after setting go$TEST_VERSION2 as default:"
 "$GMAN_SCRIPT" list
 
-run_test "Verify list shows new default" \
-    "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\\[DEFAULT\\]\""
+# Only check for the version in the list if it was actually installed
+if command -v "go$TEST_VERSION2" >/dev/null 2>&1; then
+    run_test "Verify list shows new default" \
+        "\"$GMAN_SCRIPT\" list 2>/dev/null | grep -q \"go$TEST_VERSION2.*\\[DEFAULT\\]\""
+else
+    echo "Skipping list verification - go$TEST_VERSION2 not properly installed"
+    echo "This may happen if the download step failed after go install"
+fi
 
 # Test 6: Uninstall default version
 echo "=== TEST 6: Uninstall default version ==="
