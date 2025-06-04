@@ -108,9 +108,16 @@ jobs:
       if: matrix.name == 'void'
       run: |
         # Manual checkout for Void Linux to avoid Node.js dependency
-        xbps-install -y git || true
-        git clone https://github.com/btassone/goverman.git .
-        git checkout ${GITHUB_SHA:-main}
+        # Download repository as tarball instead of using git
+        if command -v curl >/dev/null 2>&1; then
+          curl -L https://github.com/btassone/goverman/archive/${GITHUB_SHA:-main}.tar.gz | tar xz --strip-components=1
+        elif command -v wget >/dev/null 2>&1; then
+          wget -O- https://github.com/btassone/goverman/archive/${GITHUB_SHA:-main}.tar.gz | tar xz --strip-components=1
+        else
+          echo "Neither curl nor wget available, trying to install wget"
+          xbps-install -y wget || true
+          wget -O- https://github.com/btassone/goverman/archive/${GITHUB_SHA:-main}.tar.gz | tar xz --strip-components=1
+        fi
     
     - uses: actions/checkout@v4
       if: matrix.name != 'void'
