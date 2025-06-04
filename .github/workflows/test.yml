@@ -60,6 +60,13 @@ jobs:
         # Just verify they exist
         which tar gzip || emerge -q app-arch/tar app-arch/gzip
     
+    - name: Configure Git (Windows only)
+      if: runner.os == 'Windows'
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+      shell: cmd
+    
     - uses: actions/checkout@v4
     
     - name: Install Alpine dependencies
@@ -213,6 +220,15 @@ jobs:
         which find || echo "Warning: find not found"
         which curl || echo "Warning: curl wrapper not found"
     
+    - name: Cache Go installation (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/go
+          ~/AppData/Local/go-build
+        key: ${{ runner.os }}-go-1.21-installation
+    
     - name: Set up Go
       if: matrix.container == null
       uses: actions/setup-go@v5
@@ -252,8 +268,28 @@ jobs:
       run: ./test-uninstall-all.sh
       if: runner.os != 'Windows'
     
-    - name: Run PATH setup tests (Windows)
-      run: ./test-path-setup.sh
+    - name: Run quick tests (Windows)
+      run: |
+        echo "Running quick tests in parallel..."
+        ./test-path-setup.sh &
+        pid1=$!
+        ./test-distro-detection.sh &
+        pid2=$!
+        ./test-alpine-detection.sh &
+        pid3=$!
+        ./test-bootstrap.sh &
+        pid4=$!
+        ./test-uninstall-all.sh &
+        pid5=$!
+        
+        # Wait for all background jobs and check their exit status
+        wait $pid1 || exit 1
+        wait $pid2 || exit 1
+        wait $pid3 || exit 1
+        wait $pid4 || exit 1
+        wait $pid5 || exit 1
+        
+        echo "All quick tests completed successfully"
       shell: bash
       if: runner.os == 'Windows'
     
@@ -264,25 +300,5 @@ jobs:
     
     - name: Run list-available tests (Windows)
       run: ./test-list-available.sh
-      shell: bash
-      if: runner.os == 'Windows'
-    
-    - name: Run distribution detection tests (Windows)
-      run: ./test-distro-detection.sh
-      shell: bash
-      if: runner.os == 'Windows'
-    
-    - name: Run Alpine detection tests (Windows)
-      run: ./test-alpine-detection.sh
-      shell: bash
-      if: runner.os == 'Windows'
-    
-    - name: Run bootstrap tests (Windows)
-      run: ./test-bootstrap.sh
-      shell: bash
-      if: runner.os == 'Windows'
-    
-    - name: Run uninstall-all tests (Windows)
-      run: ./test-uninstall-all.sh
       shell: bash
       if: runner.os == 'Windows'
