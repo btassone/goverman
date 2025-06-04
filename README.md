@@ -16,9 +16,9 @@ Goverman helps developers who need to work with multiple Go versions by:
 ## Prerequisites
 
 - Bash-compatible shell (bash, zsh, fish, etc.)
-- curl or wget (for direct installation method)
-- Go 1.17+ (for official installation method)
+- curl or wget (required for downloading Go)
 - Standard UNIX tools (tar, grep, sed)
+- Go 1.17+ (only for the `install` command; not needed for `bootstrap`)
 
 ## Installation
 
@@ -54,6 +54,24 @@ gman <command> [options]
 ```
 
 ### Commands
+
+#### Bootstrap Go (For Fresh Systems)
+
+If you don't have Go installed yet, use the bootstrap command to install Go without any prerequisites:
+
+```bash
+# Install the latest stable Go version
+gman bootstrap
+
+# Install a specific Go version
+gman bootstrap 1.23.9
+```
+
+The bootstrap command:
+- Downloads Go directly from the official website
+- Installs to `/usr/local/go` (may require sudo)
+- Automatically configures your PATH
+- Works on systems without any Go installation
 
 #### Installing a Go Version
 
@@ -111,6 +129,29 @@ gman set-default 1.23.9
 Show usage information:
 ```bash
 gman help
+```
+
+### Quick Command Reference
+
+```bash
+# Bootstrap (for fresh systems without Go)
+gman bootstrap                  # Install latest stable Go
+gman bootstrap 1.23.9           # Install specific version
+
+# Install additional Go versions
+gman install 1.23.9             # Official method (requires Go)
+gman install 1.23.9 direct      # Direct download method
+gman install 1.23.9 --default   # Install and set as default
+
+# Manage versions
+gman list                       # List installed versions
+gman list-available             # List available versions
+gman set-default 1.23.9         # Set default go command
+gman uninstall 1.23.9           # Remove a version
+
+# Other
+gman version                    # Show gman version
+gman help                       # Show help
 ```
 
 ### Using Installed Go Versions

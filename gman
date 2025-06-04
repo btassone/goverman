@@ -23,6 +23,7 @@ show_usage() {
     echo "Usage: gman <command> [options]"
     echo ""
     echo "Commands:"
+    echo "  bootstrap [version]                      Install Go on a fresh system (no Go required)"
     echo "  install <version> [method] [--default]   Install a Go version"
     echo "  uninstall <version>                      Uninstall a Go version"
     echo "  list                                     List installed Go versions"
@@ -30,6 +31,9 @@ show_usage() {
     echo "  set-default <version>                    Set a version as the default 'go' command"
     echo "  version                                  Show gman version"
     echo "  help                                     Show this help message"
+    echo ""
+    echo "Bootstrap options:"
+    echo "  version    Go version to install (defaults to latest stable)"
     echo ""
     echo "Install options:"
     echo "  version    Go version to install (e.g., 1.23.9, 1.21.5)"
@@ -41,6 +45,8 @@ show_usage() {
     echo "  direct     Download and extract binary directly (fallback for ARM64 issues)"
     echo ""
     echo "Examples:"
+    echo "  gman bootstrap                           # Install latest Go on fresh system"
+    echo "  gman bootstrap 1.23.9                    # Install specific Go version on fresh system"
     echo "  gman install 1.23.9                      # Install using official method"
     echo "  gman install 1.23.9 direct               # Install using direct binary download"
     echo "  gman install 1.21.5 official --default   # Install and set as default"
@@ -161,11 +167,233 @@ detect_os() {
     esac
 }
 
+# Function to get latest stable Go version
+get_latest_go_version() {
+    local url="https://go.dev/dl/"
+    local temp_file=$(mktemp)
+    
+    # Check if we have curl or wget
+    if command -v curl >/dev/null 2>&1; then
+        curl -sL "$url" > "$temp_file" 2>/dev/null
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "$temp_file" "$url" 2>/dev/null
+    else
+        echo "Error: Neither curl nor wget is available"
+        rm -f "$temp_file"
+        return 1
+    fi
+    
+    # Extract the first stable version (not rc or beta)
+    local latest=$(grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' "$temp_file" | grep -v -E 'rc|beta' | head -1)
+    rm -f "$temp_file"
+    
+    if [[ -z "$latest" ]]; then
+        echo "Error: Could not determine latest Go version"
+        return 1
+    fi
+    
+    # Remove 'go' prefix
+    echo "${latest#go}"
+}
+
+# Function to bootstrap Go installation
+bootstrap_go() {
+    local version="$1"
+    
+    echo "Go Bootstrap Installer"
+    echo "====================="
+    echo ""
+    
+    # Check if Go is already installed
+    if command -v go >/dev/null 2>&1; then
+        echo "Go is already installed on this system:"
+        echo "  Version: $(go version)"
+        echo "  Location: $(which go)"
+        echo ""
+        echo "The bootstrap command is meant for fresh systems without Go."
+        echo "Use 'gman install <version>' to install additional Go versions."
+        exit 0
+    fi
+    
+    # If no version specified, get latest
+    if [[ -z "$version" ]]; then
+        echo "No version specified, fetching latest stable version..."
+        version=$(get_latest_go_version)
+        if [[ $? -ne 0 ]]; then
+            echo "Failed to fetch latest version. Please specify a version manually."
+            echo "Example: gman bootstrap 1.23.9"
+            exit 1
+        fi
+        echo "Latest stable version: $version"
+        echo ""
+    fi
+    
+    # Validate version format
+    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Invalid version format '$version'. Use format like '1.23.9'"
+        exit 1
+    fi
+    
+    local os=$(detect_os)
+    local arch=$(detect_arch)
+    local is_musl=$(detect_musl)
+    local extension="tar.gz"
+    
+    # Windows uses zip files
+    if [[ "$os" == "windows" ]]; then
+        extension="zip"
+    fi
+    
+    # Construct filename
+    local filename="go${version}.${os}-${arch}.${extension}"
+    local url="https://go.dev/dl/${filename}"
+    
+    echo "Installing Go ${version}..."
+    echo "=========================="
+    echo "OS: $os"
+    if [[ "$os" == "linux" ]]; then
+        local distro=$(detect_linux_distro)
+        echo "Distribution: $distro"
+    fi
+    echo "Architecture: $arch"
+    echo "Download URL: $url"
+    echo ""
+    
+    # Create temporary directory
+    local temp_dir=$(mktemp -d)
+    trap "rm -rf $temp_dir" EXIT
+    
+    # Download Go
+    echo "Downloading $filename..."
+    local download_status=1
+    
+    if command -v curl >/dev/null 2>&1; then
+        echo "Using curl..."
+        if curl -L --progress-bar -o "$temp_dir/$filename" "$url"; then
+            download_status=0
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        echo "Using wget..."
+        if wget -q --show-progress -O "$temp_dir/$filename" "$url"; then
+            download_status=0
+        fi
+    else
+        echo "Error: Neither curl nor wget is available"
+        echo "Please install curl or wget first"
+        exit 1
+    fi
+    
+    if [[ $download_status -ne 0 ]]; then
+        echo "Error: Failed to download Go $version"
+        exit 1
+    fi
+    
+    echo "✓ Download completed"
+    
+    # Install to /usr/local/go (standard location)
+    local install_dir="/usr/local/go"
+    echo ""
+    echo "Installing to $install_dir..."
+    echo ""
+    
+    # Check if we need sudo
+    local use_sudo=""
+    if [[ ! -w "/usr/local" ]]; then
+        if command -v sudo >/dev/null 2>&1; then
+            echo "Installation requires administrator privileges."
+            echo "You may be prompted for your password."
+            use_sudo="sudo"
+        else
+            echo "Error: Cannot write to /usr/local and sudo is not available"
+            echo "Please run this command as root or install sudo"
+            exit 1
+        fi
+    fi
+    
+    # Remove existing installation if present
+    if [[ -d "$install_dir" ]]; then
+        echo "Removing existing installation at $install_dir..."
+        $use_sudo rm -rf "$install_dir"
+    fi
+    
+    # Extract Go
+    echo "Extracting Go ${version}..."
+    if [[ "$os" == "windows" ]]; then
+        # For Windows, use unzip
+        if command -v unzip >/dev/null 2>&1; then
+            $use_sudo unzip -q "$temp_dir/$filename" -d "/usr/local"
+        else
+            echo "Error: unzip is required for Windows installation"
+            exit 1
+        fi
+    else
+        # For Unix-like systems, use tar
+        $use_sudo tar -C "/usr/local" -xzf "$temp_dir/$filename"
+    fi
+    
+    echo "✓ Go installed to $install_dir"
+    
+    # Setup PATH
+    echo ""
+    echo "Setting up PATH..."
+    local profile_file=$(get_shell_profile)
+    local shell_name=$(detect_shell)
+    local path_export_line='export PATH="/usr/local/go/bin:$PATH"'
+    local path_marker="# Added by goverman bootstrap"
+    
+    if [[ -n "$profile_file" ]]; then
+        # Check if already in profile
+        if [[ -f "$profile_file" ]] && grep -q "/usr/local/go/bin" "$profile_file" 2>/dev/null; then
+            echo "✓ /usr/local/go/bin already in $profile_file"
+        else
+            echo ""
+            echo "Adding /usr/local/go/bin to PATH in $profile_file..."
+            
+            # Create profile file if it doesn't exist
+            if [[ ! -f "$profile_file" ]]; then
+                touch "$profile_file"
+            fi
+            
+            # Add PATH export
+            echo "" >> "$profile_file"
+            echo "$path_marker" >> "$profile_file"
+            echo "$path_export_line" >> "$profile_file"
+            
+            echo "✓ Added to PATH in $profile_file"
+        fi
+    fi
+    
+    # Also update current session
+    export PATH="/usr/local/go/bin:$PATH"
+    
+    echo ""
+    echo "========================================="
+    echo "✅ Go ${version} successfully installed!"
+    echo "========================================="
+    echo ""
+    echo "Installation details:"
+    echo "  Location: $install_dir"
+    echo "  Binary: /usr/local/go/bin/go"
+    echo "  Version: $(go version 2>/dev/null || echo "Please restart your terminal")"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Restart your terminal or run: source $profile_file"
+    echo "  2. Verify installation: go version"
+    echo "  3. Install additional versions: gman install <version>"
+    echo ""
+    echo "Now you can use gman to manage multiple Go versions!"
+}
+
 # Function to check if Go is installed
 check_go_installed() {
     if ! command -v go >/dev/null 2>&1; then
-        echo "Error: Go is not installed. Please install Go first before installing additional versions."
-        echo "Visit: https://go.dev/doc/install"
+        echo "Error: Go is not installed."
+        echo ""
+        echo "To install Go on this system, use:"
+        echo "  gman bootstrap              # Install latest stable Go"
+        echo "  gman bootstrap 1.23.9       # Install specific version"
+        echo ""
+        echo "Or visit: https://go.dev/doc/install"
         exit 1
     fi
     echo "✓ Go is installed: $(go version)"
@@ -1381,6 +1609,9 @@ main() {
     shift
     
     case "$command" in
+        bootstrap)
+            bootstrap_go "$@"
+            ;;
         install)
             if [[ $# -eq 0 ]]; then
                 echo "Error: No version specified for install"
