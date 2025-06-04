@@ -14,7 +14,7 @@
 set -e
 
 # Version information
-GMAN_VERSION="v1.9.0"
+GMAN_VERSION="v1.10.0"
 
 # Function to display usage
 show_usage() {
