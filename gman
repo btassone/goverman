@@ -547,9 +547,19 @@ add_to_shell_profile() {
 
 # Function to setup Go binary path
 setup_go_path() {
-    local gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
-    local gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    local gopath=""
+    local gobin_env=""
     local gobin
+    
+    # Try to get Go environment, but handle broken installations
+    if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then
+        gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    else
+        # Go is broken or not installed, use defaults
+        gopath="$HOME/go"
+        gobin_env=""
+    fi
     
     # Use GOBIN if set and not empty, otherwise use GOPATH/bin
     if [[ -n "$gobin_env" ]]; then
@@ -658,8 +668,13 @@ install_official() {
         echo "Error: Binary $go_binary not found after installation"
         echo "Debug info:"
         echo "  Expected: $gobin/$go_binary" 
-        echo "  GOPATH: $(go env GOPATH)"
-        echo "  GOBIN: $(go env GOBIN)"
+        if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then
+            echo "  GOPATH: $(go env GOPATH)"
+            echo "  GOBIN: $(go env GOBIN)"
+        else
+            echo "  GOPATH: $HOME/go (default, Go not working)"
+            echo "  GOBIN: (not set, Go not working)"
+        fi
         echo "  Directory contents of $gobin:"
         ls -la "$gobin/" 2>/dev/null || echo "  Directory doesn't exist"
         echo "  Searching for $go_binary in home directory:"
@@ -1134,8 +1149,13 @@ list_installed_versions() {
     local seen_versions=""  # Track versions we've already seen (space-separated list)
     
     # Get gobin directory
-    local gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
-    local gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    # Handle broken Go installations
+    local gopath="$HOME/go"
+    local gobin_env=""
+    if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then
+        gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    fi
     local gobin
     if [[ -n "$gobin_env" ]]; then
         gobin="$gobin_env"
@@ -1162,9 +1182,15 @@ list_installed_versions() {
     echo "System default Go:"
     echo "------------------"
     if command -v go >/dev/null 2>&1; then
-        local default_version=$(go version 2>/dev/null || echo "unknown")
-        local default_root=$(go env GOROOT 2>/dev/null || echo "unknown")
+        local default_version="unknown"
+        local default_root="unknown"
         local default_path=$(which go 2>/dev/null || echo "unknown")
+        
+        # Only get version and GOROOT if go actually works
+        if go version >/dev/null 2>&1; then
+            default_version=$(go version 2>/dev/null || echo "unknown")
+            default_root=$(go env GOROOT 2>/dev/null || echo "unknown")
+        fi
         local is_default_marker=""
         
         # Check if this is the goverman-managed default
@@ -1184,8 +1210,13 @@ list_installed_versions() {
     fi
     
     # Now find additional Go versions
-    local gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
-    local gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    # Handle broken Go installations
+    local gopath="$HOME/go"
+    local gobin_env=""
+    if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then
+        gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    fi
     
     # Build list of directories to check (remove duplicates)
     local search_dirs=()
@@ -1448,8 +1479,14 @@ uninstall_version() {
     
     # Add GOBIN and GOPATH locations if Go is available
     if command -v go >/dev/null 2>&1; then
-        local GOBIN_PATH=$(go env GOBIN 2>/dev/null || echo "")
-        local GOPATH_PATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        local GOBIN_PATH=""
+        local GOPATH_PATH="$HOME/go"
+        
+        # Only get env if Go is working
+        if go version >/dev/null 2>&1; then
+            GOBIN_PATH=$(go env GOBIN 2>/dev/null || echo "")
+            GOPATH_PATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        fi
         
         if [[ -n "$GOBIN_PATH" ]]; then
             SEARCH_LOCATIONS=("$GOBIN_PATH/$GO_BINARY" "${SEARCH_LOCATIONS[@]}")
@@ -1570,8 +1607,24 @@ cmd_install() {
     echo "Date: $(date)"
     echo ""
     
-    # Check if Go is installed
-    check_go_installed
+    # Check if Go is installed (only required for official method)
+    if [[ "$method" == "official" ]]; then
+        check_go_installed
+    else
+        # For direct method, just check if go command exists and warn if broken
+        if command -v go >/dev/null 2>&1; then
+            if go version >/dev/null 2>&1; then
+                echo "✓ Go is installed: $(go version)"
+            else
+                echo "⚠️  Warning: Go command exists but is not working properly"
+                echo "  The direct installation method will proceed anyway."
+                echo ""
+            fi
+        else
+            echo "Note: Go is not installed. Using direct installation method."
+            echo ""
+        fi
+    fi
     
     # Check if version is already installed
     local go_binary="go${version}"
