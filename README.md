@@ -122,7 +122,8 @@ The install command supports two installation methods:
 
 **Official Method (default)** - Uses `go install` to download and install Go versions:
 ```bash
-gman install 1.23.9
+gman install 1.23.9      # Specific version
+gman install latest      # Latest stable version
 ```
 
 **Direct Method** - Downloads Go binaries directly from the official Go website:
@@ -193,6 +194,8 @@ gman bootstrap                  # Install latest stable Go
 gman bootstrap 1.23.9           # Install specific version
 
 # Install additional Go versions
+gman install latest             # Install latest stable version
+gman install latest --default   # Install latest and set as default
 gman install 1.23.9             # Official method (requires Go)
 gman install 1.23.9 direct      # Direct download method
 gman install 1.23.9 --default   # Install and set as default

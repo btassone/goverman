@@ -307,8 +307,29 @@ echo "=== TEST 8: Final cleanup ==="
 run_test "Final uninstall go$TEST_VERSION" \
     "\"$GMAN_SCRIPT\" uninstall \"$TEST_VERSION\""
 
-# Test 9: List available versions
-echo "=== TEST 9: List available versions ==="
+# Test 9: Install latest version
+echo "=== TEST 9: Install latest version ==="
+
+# Test installing latest version
+echo "Testing: Install latest Go version"
+output=$("$GMAN_SCRIPT" install latest direct 2>&1)
+
+# Check if it fetched and installed a version
+if echo "$output" | grep -q "Latest version is:"; then
+    echo "✅ PASS: Detected latest version"
+    latest_version=$(echo "$output" | grep "Latest version is:" | sed 's/Latest version is: //')
+    echo "  Latest version: $latest_version"
+    
+    # Clean up the latest version
+    "$GMAN_SCRIPT" uninstall "$latest_version" >/dev/null 2>&1
+else
+    echo "❌ FAIL: Failed to detect latest version"
+    echo "Output: $output"
+    exit 1
+fi
+
+# Test 10: List available versions
+echo "=== TEST 10: List available versions ==="
 
 # Test default behavior (should show 20 versions)
 echo "Testing: List available versions (default)"

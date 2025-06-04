@@ -37,7 +37,7 @@ show_usage() {
     echo "  version    Go version to install (defaults to latest stable)"
     echo ""
     echo "Install options:"
-    echo "  version    Go version to install (e.g., 1.23.9, 1.21.5)"
+    echo "  version    Go version to install (e.g., 1.23.9, 1.21.5, or 'latest')"
     echo "  method     Installation method: 'official' (default) or 'direct'"
     echo "  --default  Set this version as the default 'go' command after installation"
     echo ""
@@ -48,6 +48,8 @@ show_usage() {
     echo "Examples:"
     echo "  gman bootstrap                           # Install latest Go on fresh system"
     echo "  gman bootstrap 1.23.9                    # Install specific Go version on fresh system"
+    echo "  gman install latest                      # Install latest Go version"
+    echo "  gman install latest --default            # Install latest and set as default"
     echo "  gman install 1.23.9                      # Install using official method"
     echo "  gman install 1.23.9 direct               # Install using direct binary download"
     echo "  gman install 1.21.5 official --default   # Install and set as default"
@@ -1776,9 +1778,21 @@ cmd_install() {
     local method="official"
     local set_default=false
     
+    # Handle "latest" as a special version
+    if [[ "$version" == "latest" ]]; then
+        echo "Fetching latest Go version..."
+        version=$(get_latest_go_version)
+        if [[ $? -ne 0 ]] || [[ -z "$version" ]]; then
+            echo "Error: Failed to fetch latest Go version"
+            exit 1
+        fi
+        echo "Latest version is: $version"
+        echo ""
+    fi
+    
     # Validate version format
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "Error: Invalid version format '$version'. Use format like '1.23.9'"
+        echo "Error: Invalid version format '$version'. Use format like '1.23.9' or 'latest'"
         exit 1
     fi
     
