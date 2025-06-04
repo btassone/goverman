@@ -52,9 +52,9 @@ jobs:
     - name: Install essential tools for checkout (openSUSE)
       if: startsWith(matrix.container || '', 'opensuse')
       run: |
-        # Skip repository refresh to avoid errors, tar and gzip should be pre-installed
-        which tar || zypper --non-interactive install --no-refresh tar
-        which gzip || zypper --non-interactive install --no-refresh gzip
+        # tar and gzip should be pre-installed, just verify
+        command -v tar >/dev/null 2>&1 || zypper --non-interactive install tar
+        command -v gzip >/dev/null 2>&1 || zypper --non-interactive install gzip
     
     - name: Install essential tools for checkout (Arch Linux)
       if: matrix.container == 'archlinux:latest'
@@ -123,9 +123,8 @@ jobs:
     - name: Install openSUSE dependencies
       if: startsWith(matrix.container || '', 'opensuse')
       run: |
-        # Skip repository refresh due to repo errors
-        # Install required packages without refresh
-        zypper --non-interactive install --no-refresh bash curl which findutils || true
+        # Install required packages (which is in util-linux on openSUSE)
+        zypper --non-interactive install bash curl util-linux findutils || true
         # Install Go
         zypper --non-interactive install go || {
           # If Go is not in repos, download and install it
