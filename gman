@@ -26,6 +26,7 @@ show_usage() {
     echo "  bootstrap [version]                      Install Go on a fresh system (no Go required)"
     echo "  install <version> [method] [--default]   Install a Go version"
     echo "  uninstall <version>                      Uninstall a Go version"
+    echo "  uninstall-all                            Uninstall all Go versions installed by gman"
     echo "  list                                     List installed Go versions"
     echo "  list-available [--all]                   List available Go versions to install"
     echo "  set-default <version>                    Set a version as the default 'go' command"
@@ -51,6 +52,7 @@ show_usage() {
     echo "  gman install 1.23.9 direct               # Install using direct binary download"
     echo "  gman install 1.21.5 official --default   # Install and set as default"
     echo "  gman uninstall 1.21.5                    # Uninstall a Go version"
+    echo "  gman uninstall-all                       # Uninstall all gman-managed versions"
     echo "  gman set-default 1.21.5                  # Set existing version as default"
     echo "  gman list                                # List all installed versions"
     echo "  gman list-available                      # List recent available versions (top 20)"
@@ -1567,6 +1569,204 @@ uninstall_version() {
     echo "  - Other custom installation directories"
 }
 
+# Function to uninstall all Go versions
+uninstall_all() {
+    echo "Uninstall All Go Versions"
+    echo "========================="
+    echo ""
+    
+    # Find all goverman-installed Go versions
+    local found_versions=()
+    local gopath=""
+    local gobin_env=""
+    
+    # Handle broken Go installations
+    if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then
+        gopath=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+        gobin_env=$(go env GOBIN 2>/dev/null || echo "")
+    else
+        gopath="$HOME/go"
+        gobin_env=""
+    fi
+    
+    # Determine gobin
+    local gobin
+    if [[ -n "$gobin_env" ]]; then
+        gobin="$gobin_env"
+    else
+        gobin="$gopath/bin"
+    fi
+    
+    # Build list of directories to check
+    local search_dirs=()
+    if [[ -n "$gobin_env" ]]; then
+        search_dirs+=("$gobin_env")
+    fi
+    search_dirs+=("$gopath/bin")
+    search_dirs+=("$HOME/go/bin")
+    search_dirs+=("/usr/local/bin")
+    search_dirs+=("$HOME/.local/bin")
+    
+    # Find go binaries
+    echo "Searching for goverman-installed Go versions..."
+    echo ""
+    
+    for dir in "${search_dirs[@]}"; do
+        if [[ -d "$dir" ]]; then
+            while IFS= read -r binary; do
+                if [[ -n "$binary" ]]; then
+                    local version_name=$(basename "$binary")
+                    # Remove .exe extension if present (Windows)
+                    version_name="${version_name%.exe}"
+                    if [[ "$version_name" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                        # Skip duplicates
+                        local already_found=false
+                        for v in "${found_versions[@]}"; do
+                            if [[ "$v" == "$version_name" ]]; then
+                                already_found=true
+                                break
+                            fi
+                        done
+                        if [[ "$already_found" == "false" ]]; then
+                            found_versions+=("$version_name")
+                        fi
+                    fi
+                fi
+            done < <(find "$dir" -maxdepth 1 -name "go[0-9]*" -type f 2>/dev/null)
+        fi
+    done
+    
+    # Check if any versions were found
+    if [[ ${#found_versions[@]} -eq 0 ]]; then
+        echo "No goverman-installed Go versions found."
+        echo ""
+        echo "Note: This command only removes versions installed by gman."
+        echo "System-wide Go installations in /usr/local/go are not affected."
+        return 0
+    fi
+    
+    # Display found versions
+    echo "Found ${#found_versions[@]} goverman-installed Go version(s):"
+    for version in "${found_versions[@]}"; do
+        echo "  - $version"
+    done
+    echo ""
+    
+    # Check for default symlink
+    local go_link="$gobin/go"
+    local has_default=false
+    if [[ -L "$go_link" ]] || ([[ -f "$go_link" ]] && grep -q "goverman" "$go_link" 2>/dev/null); then
+        has_default=true
+        echo "Note: Default 'go' command symlink will also be removed."
+        echo ""
+    fi
+    
+    # Confirm deletion
+    if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]] || [[ ! -t 0 ]]; then
+        echo "Running in non-interactive mode (CI detected). Proceeding with uninstall."
+        local confirm="y"
+    else
+        echo "⚠️  WARNING: This will permanently remove all goverman-installed Go versions!"
+        read -p "Are you sure you want to uninstall ALL versions? (y/N): " -n 1 -r
+        echo
+        local confirm="$REPLY"
+    fi
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Uninstall cancelled."
+        return 0
+    fi
+    
+    echo ""
+    echo "Uninstalling all versions..."
+    echo "============================"
+    
+    # Uninstall each version
+    local success_count=0
+    local fail_count=0
+    
+    for version_full in "${found_versions[@]}"; do
+        # Extract version number (remove 'go' prefix)
+        local version="${version_full#go}"
+        echo ""
+        echo "Uninstalling $version_full..."
+        
+        # Call the existing uninstall function
+        if uninstall_version "$version" 2>&1 | sed 's/^/  /'; then
+            success_count=$((success_count + 1))
+        else
+            echo "  ❌ Failed to uninstall $version_full"
+            fail_count=$((fail_count + 1))
+        fi
+    done
+    
+    # Remove default symlink if it exists
+    if [[ "$has_default" == "true" ]] && [[ -e "$go_link" ]]; then
+        echo ""
+        echo "Removing default 'go' symlink..."
+        rm -f "$go_link"
+        echo "✓ Default symlink removed"
+    fi
+    
+    # Also check for orphaned SDK directories
+    if [[ -d "$HOME/sdk" ]]; then
+        local orphaned_count=0
+        for sdk_dir in "$HOME/sdk"/go[0-9]*; do
+            if [[ -d "$sdk_dir" ]]; then
+                orphaned_count=$((orphaned_count + 1))
+            fi
+        done
+        
+        if [[ $orphaned_count -gt 0 ]]; then
+            echo ""
+            echo "Found $orphaned_count orphaned SDK director(ies) in $HOME/sdk"
+            if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]] || [[ ! -t 0 ]]; then
+                local remove_sdk="y"
+            else
+                read -p "Remove orphaned SDK directories? (y/N): " -n 1 -r
+                echo
+                local remove_sdk="$REPLY"
+            fi
+            
+            if [[ "$remove_sdk" =~ ^[Yy]$ ]]; then
+                for sdk_dir in "$HOME/sdk"/go[0-9]*; do
+                    if [[ -d "$sdk_dir" ]]; then
+                        echo "Removing $sdk_dir..."
+                        rm -rf "$sdk_dir"
+                    fi
+                done
+                echo "✓ Orphaned SDK directories removed"
+            fi
+        fi
+    fi
+    
+    echo ""
+    echo "====================================="
+    echo "Uninstall Summary"
+    echo "====================================="
+    echo "Successfully uninstalled: $success_count version(s)"
+    if [[ $fail_count -gt 0 ]]; then
+        echo "Failed to uninstall: $fail_count version(s)"
+    fi
+    echo ""
+    
+    if [[ $success_count -gt 0 ]]; then
+        echo "✅ All goverman-installed Go versions have been removed."
+    fi
+    
+    # Check if system Go is still available
+    if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then
+        echo ""
+        echo "Note: System Go is still installed:"
+        echo "  $(go version)"
+        echo "  Location: $(which go)"
+    else
+        echo ""
+        echo "No Go installation remains on this system."
+        echo "To install Go again, use: gman bootstrap"
+    fi
+}
+
 # Command: install
 cmd_install() {
     # Save original PATH before any modifications
@@ -1702,6 +1902,9 @@ main() {
                 show_usage
             fi
             uninstall_version "$1"
+            ;;
+        uninstall-all)
+            uninstall_all
             ;;
         list)
             list_installed_versions

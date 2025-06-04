@@ -92,12 +92,23 @@ gman install 1.23.9 direct
 gman install 1.23.9 --default
 ```
 
-#### Uninstalling a Go Version
+#### Uninstalling Go Versions
 
 Remove a specific Go version:
 ```bash
 gman uninstall 1.23.9
 ```
+
+Remove all goverman-installed Go versions:
+```bash
+gman uninstall-all
+```
+
+The `uninstall-all` command will:
+- Find all Go versions installed by gman
+- Prompt for confirmation before removing
+- Clean up orphaned SDK directories
+- Remove the default symlink if present
 
 #### List Installed Versions
 
@@ -148,6 +159,7 @@ gman list                       # List installed versions
 gman list-available             # List available versions
 gman set-default 1.23.9         # Set default go command
 gman uninstall 1.23.9           # Remove a version
+gman uninstall-all              # Remove all versions
 
 # Other
 gman version                    # Show gman version
