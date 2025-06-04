@@ -71,7 +71,11 @@ jobs:
     - name: Install essential tools for checkout (Void Linux)
       if: matrix.container == 'voidlinux/voidlinux:latest'
       run: |
-        # Skip repository sync due to SSL issues in container
+        # Install libstdc++ for Node.js (required by actions/checkout)
+        xbps-install -y libstdc++ || {
+          # Try without repo sync if it fails
+          xbps-install -Sy libstdc++
+        }
         # The base image should have tar and gzip
         which tar || xbps-install -y tar
         which gzip || xbps-install -y gzip
