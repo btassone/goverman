@@ -1404,10 +1404,34 @@ list_available_versions() {
     echo "Fetching from: $url"
     echo ""
     
+    local download_status=1
     if [[ "$downloader" == "curl" ]]; then
-        curl -sL "$url" > "$temp_file"
+        if curl -sL "$url" > "$temp_file" 2>&1; then
+            download_status=0
+        fi
     else
-        wget -qO "$temp_file" "$url"
+        # wget exit code 5 = SSL verification error
+        if wget -qO "$temp_file" "$url" 2>&1; then
+            download_status=0
+        else
+            local wget_exit=$?
+            if [[ $wget_exit -eq 5 ]]; then
+                echo "SSL error detected, retrying with --no-check-certificate..."
+                if wget --no-check-certificate -qO "$temp_file" "$url" 2>&1; then
+                    download_status=0
+                fi
+            fi
+        fi
+    fi
+    
+    # Check if download succeeded and file has content
+    if [[ $download_status -ne 0 ]] || [[ ! -s "$temp_file" ]]; then
+        echo "Error: Failed to download version list from go.dev"
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "This often happens in CI environments due to network/SSL restrictions"
+        fi
+        rm -f "$temp_file"
+        return 1
     fi
     
     # Parse versions from the HTML
@@ -1415,7 +1439,11 @@ list_available_versions() {
     local versions=$(grep -oE 'go[0-9]+\.[0-9]+(\.[0-9]+)?' "$temp_file" | sort -Vr | uniq)
     
     if [[ -z "$versions" ]]; then
-        echo "Error: Could not fetch version list"
+        echo "Error: Could not parse version list from downloaded content"
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "Debug: First 500 chars of downloaded content:"
+            head -c 500 "$temp_file" | sed 's/^/  /'
+        fi
         rm -f "$temp_file"
         return 1
     fi
