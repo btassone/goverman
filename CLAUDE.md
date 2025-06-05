@@ -202,6 +202,20 @@ Based on git commits, we've recently worked on:
   - Clear success messages and next steps
 - Updated README with Quick Install section
 - Released v1.11.0 with man page and installer
+- Added test coverage for install.sh:
+  - Created test-install.sh with 10 comprehensive tests
+  - Added to GitHub Actions workflow for all platforms
+- Created universal uninstall script (uninstall.sh):
+  - Removes gman binary and man page
+  - Removes all gman-installed Go versions and SDKs
+  - Cleans PATH entries from shell profiles (bash, zsh, fish)
+  - Creates backups of modified shell profiles
+  - Handles empty directory cleanup
+- Added test coverage for uninstall.sh:
+  - Created test-uninstall-script.sh with 10 comprehensive tests
+  - Added to GitHub Actions workflow for all platforms
+- Updated README with Quick Uninstall section
+- Released v1.12.0 with uninstaller
 
 ## Usage Reminders
 ```bash

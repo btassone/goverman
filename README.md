@@ -26,6 +26,24 @@ This will:
 - Set up your PATH automatically
 - Install the man page (if available)
 
+## Quick Uninstall
+
+Completely remove goverman and all installed Go versions:
+
+```bash
+# Using curl
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
+
+# Using wget
+wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
+```
+
+This will:
+- Remove the `gman` binary and man page
+- Remove all gman-installed Go versions
+- Clean up PATH entries from shell profiles
+- Create backups of modified shell profiles
+
 ## Why goverman?
 
 While tools like `gvm` (Go Version Manager) exist, many are no longer actively maintained. goverman fills this gap with:
