@@ -285,7 +285,7 @@ jobs:
         cache: false  # Disable cache since this isn't a Go module (no go.sum)
     
     - name: Make scripts executable
-      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh test-alpine-detection.sh test-distro-detection.sh test-bootstrap.sh test-uninstall-all.sh
+      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh test-alpine-detection.sh test-distro-detection.sh test-bootstrap.sh test-uninstall-all.sh test-install.sh install.sh
       if: runner.os != 'Windows'
     
     - name: Run PATH setup tests (Unix)
@@ -314,6 +314,10 @@ jobs:
     
     - name: Run uninstall-all tests (Unix)
       run: ./test-uninstall-all.sh
+      if: runner.os != 'Windows'
+    
+    - name: Run install.sh tests (Unix)
+      run: ./test-install.sh
       if: runner.os != 'Windows'
     
     - name: Run quick tests (Windows)
@@ -348,5 +352,10 @@ jobs:
     
     - name: Run list-available tests (Windows)
       run: ./test-list-available.sh
+      shell: bash
+      if: runner.os == 'Windows'
+    
+    - name: Run install.sh tests (Windows)
+      run: ./test-install.sh
       shell: bash
       if: runner.os == 'Windows'
