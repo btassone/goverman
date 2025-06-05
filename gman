@@ -35,6 +35,7 @@ show_usage() {
     echo ""
     echo "Bootstrap options:"
     echo "  version    Go version to install (defaults to latest stable)"
+    echo "             Use 'latest' to explicitly fetch the latest version"
     echo ""
     echo "Install options:"
     echo "  version    Go version to install (e.g., 1.23.9, 1.21.5, or 'latest')"
@@ -47,6 +48,7 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  gman bootstrap                           # Install latest Go on fresh system"
+    echo "  gman bootstrap latest                    # Explicitly install latest Go version"
     echo "  gman bootstrap 1.23.9                    # Install specific Go version on fresh system"
     echo "  gman install latest                      # Install latest Go version"
     echo "  gman install latest --default            # Install latest and set as default"
@@ -256,8 +258,8 @@ bootstrap_go() {
         fi
     fi
     
-    # If no version specified, get latest
-    if [[ -z "$version" ]]; then
+    # If no version specified or "latest" is used, get latest
+    if [[ -z "$version" ]] || [[ "$version" == "latest" ]]; then
         echo "No version specified, fetching latest stable version..."
         version=$(get_latest_go_version)
         if [[ $? -ne 0 ]]; then
