@@ -56,6 +56,11 @@ print_fail() {
 
 # Setup function - create a mock goverman installation
 setup_mock_installation() {
+    # Clean up any existing test directory contents
+    rm -rf "$TEST_DIR"/*
+    rm -rf "$HOME"
+    mkdir -p "$HOME"
+    
     # Create mock gman binary
     mkdir -p "$TEST_DIR/usr/local/bin"
     echo '#!/bin/bash' > "$TEST_DIR/usr/local/bin/gman"
@@ -72,6 +77,8 @@ setup_mock_installation() {
     chmod +x "$GOBIN/go1.23.9"
     echo '#!/bin/bash' > "$GOBIN/go1.22.0"
     chmod +x "$GOBIN/go1.22.0"
+    # Remove any existing symlink before creating new one
+    rm -f "$GOBIN/go"
     ln -s go1.23.9 "$GOBIN/go"
     
     # Create SDK directories
@@ -208,6 +215,63 @@ else
     else
         print_pass
     fi
+fi
+
+# Test 11: Test --keep-all flag
+print_test "Uninstaller with --keep-all flag keeps Go versions"
+setup_mock_installation
+sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_keep_all.sh"
+sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_keep_all.sh"
+chmod +x "$TEST_DIR/uninstall_keep_all.sh"
+
+# Run with --keep-all
+if bash "$TEST_DIR/uninstall_keep_all.sh" --keep-all >/dev/null 2>&1; then
+    # Check that gman is removed but Go versions remain
+    if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && -f "$GOBIN/go1.23.9" && -f "$GOBIN/go1.22.0" ]]; then
+        print_pass
+    else
+        print_fail "Either gman wasn't removed or Go versions were removed"
+    fi
+else
+    print_fail "Uninstaller failed with --keep-all flag"
+fi
+
+# Test 12: Test --keep-default flag  
+print_test "Uninstaller with --keep-default flag keeps only default version"
+setup_mock_installation
+sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_keep_default.sh"
+sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_keep_default.sh"
+chmod +x "$TEST_DIR/uninstall_keep_default.sh"
+
+# Run with --keep-default
+if bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default >/dev/null 2>&1; then
+    # Check that gman is removed, default version remains, other is removed
+    if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" ]]; then
+        print_pass
+    else
+        print_fail "Unexpected state after --keep-default"
+    fi
+else
+    print_fail "Uninstaller failed with --keep-default flag"
+fi
+
+# Test 13: Test --remove-all flag
+print_test "Uninstaller with --remove-all flag removes everything"
+setup_mock_installation
+sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_remove_all.sh"
+sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_remove_all.sh"
+chmod +x "$TEST_DIR/uninstall_remove_all.sh"
+
+# Run with --remove-all
+if bash "$TEST_DIR/uninstall_remove_all.sh" --remove-all >/dev/null 2>&1; then
+    # Check that everything is removed
+    if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && ! -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" ]]; then
+        print_pass
+    else
+        print_fail "Some files remain after --remove-all"
+    fi
+else
+    print_fail "Uninstaller failed with --remove-all flag"
 fi
 
 # Summary

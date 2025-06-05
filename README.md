@@ -44,17 +44,33 @@ This will:
 
 ## Uninstalling
 
-Completely remove goverman and all installed Go versions:
+The uninstaller provides flexible options for removal:
 
 ```bash
+# Interactive mode - asks what to do with Go versions
 gman-uninstall
+
+# Remove everything (gman and all Go versions)
+gman-uninstall --remove-all
+
+# Keep only the default Go version
+gman-uninstall --keep-default
+
+# Keep all Go versions (only remove gman)
+gman-uninstall --keep-all
 ```
 
-This will:
+Options:
+- **Interactive mode** (default): Asks whether to remove all Go versions, keep only default, or keep all
+- **--remove-all**: Remove gman and all gman-installed Go versions
+- **--keep-default**: Remove gman and non-default Go versions
+- **--keep-all**: Remove only gman, keeping all Go versions for manual use
+
+The uninstaller will:
 - Remove gman and companion scripts (gman-update, gman-uninstall)
 - Remove the man page
-- Remove all gman-installed Go versions
-- Clean up PATH entries from shell profiles
+- Handle Go versions based on your choice
+- Clean up PATH entries from shell profiles (unless keeping Go versions)
 - Create backups of modified shell profiles
 
 ## Why goverman?

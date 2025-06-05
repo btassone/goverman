@@ -1,12 +1,16 @@
 #!/bin/bash
 
 # gman-uninstall - Universal uninstaller for gman (goverman)
-# This script completely removes gman and all installed Go versions
+# This script removes gman with options for keeping Go versions
 #
 # Usage:
-#   gman-uninstall               # When installed via install.sh
-#   curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
-#   wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
+#   gman-uninstall [options]
+#
+# Options:
+#   --remove-all          Remove all gman-installed Go versions (default if no option specified)
+#   --keep-default        Keep only the default Go version, remove others
+#   --keep-all           Keep all Go versions, only remove gman itself
+#   -h, --help           Show this help message
 
 set -e
 
@@ -26,6 +30,9 @@ SDK_DIR="$HOME/sdk"
 # Track what we remove
 REMOVED_ITEMS=()
 
+# Options
+REMOVAL_MODE=""  # Will be set to: remove-all, keep-default, or keep-all
+
 # Functions
 print_error() {
     echo -e "${RED}Error: $1${NC}" >&2
@@ -41,6 +48,22 @@ print_info() {
 
 print_warning() {
     echo -e "${YELLOW}Warning: $1${NC}"
+}
+
+# Show help message
+show_help() {
+    echo "gman-uninstall - Universal uninstaller for gman (goverman)"
+    echo ""
+    echo "Usage: gman-uninstall [options]"
+    echo ""
+    echo "Options:"
+    echo "  --remove-all      Remove all gman-installed Go versions (default)"
+    echo "  --keep-default    Keep only the default Go version, remove others"
+    echo "  --keep-all        Keep all Go versions, only remove gman itself"
+    echo "  -h, --help        Show this help message"
+    echo ""
+    echo "If no option is specified, the script will ask what you want to do."
+    exit 0
 }
 
 # Check if running with appropriate permissions
@@ -125,39 +148,87 @@ find_go_versions() {
         done
     fi
     
-    # Check for default symlink or file named 'go'
-    if [[ -L "$GOBIN/go" ]]; then
-        local target=$(readlink "$GOBIN/go")
-        if [[ "$target" =~ go[0-9] ]]; then
-            versions+=("$GOBIN/go")
-        fi
-    elif [[ -f "$GOBIN/go" ]]; then
-        # On Windows, symlinks might be regular files
-        versions+=("$GOBIN/go")
-    fi
-    
     echo "${versions[@]}"
 }
 
-# Remove all installed Go versions
-remove_go_versions() {
+# Find the default Go version
+find_default_go() {
+    if [[ -L "$GOBIN/go" ]]; then
+        # It's a symlink - get the target
+        local target=$(readlink "$GOBIN/go" 2>/dev/null || true)
+        if [[ -n "$target" ]]; then
+            # Handle both absolute and relative symlinks
+            if [[ "$target" = /* ]]; then
+                echo "$target"
+            else
+                # Relative symlink
+                echo "$GOBIN/$target"
+            fi
+        fi
+    fi
+}
+
+# Handle Go version removal based on mode
+handle_go_versions() {
+    local mode="$1"
+    
+    if [[ "$mode" == "keep-all" ]]; then
+        print_info "Keeping all Go versions (as requested)"
+        return
+    fi
+    
     print_info "Looking for gman-installed Go versions..."
     
     local versions=($(find_go_versions))
+    local default_go=$(find_default_go)
     
     if [[ ${#versions[@]} -eq 0 ]]; then
         print_info "No gman-installed Go versions found"
         return
     fi
     
-    print_warning "Found ${#versions[@]} gman-installed Go version(s)"
+    # Build list of versions to remove
+    local versions_to_remove=()
+    local versions_to_keep=()
+    
+    if [[ "$mode" == "keep-default" && -n "$default_go" ]]; then
+        # Keep only the default
+        for version in "${versions[@]}"; do
+            # Normalize paths for comparison
+            local normalized_version=$(readlink -f "$version" 2>/dev/null || echo "$version")
+            local normalized_default=$(readlink -f "$default_go" 2>/dev/null || echo "$default_go")
+            
+            if [[ "$normalized_version" == "$normalized_default" ]]; then
+                versions_to_keep+=("$version")
+            else
+                versions_to_remove+=("$version")
+            fi
+        done
+    else
+        # Remove all (either mode is remove-all or no default found for keep-default)
+        versions_to_remove=("${versions[@]}")
+    fi
+    
+    # Show what will happen
+    if [[ ${#versions_to_keep[@]} -gt 0 ]]; then
+        print_info "Will keep ${#versions_to_keep[@]} Go version(s):"
+        for version in "${versions_to_keep[@]}"; do
+            echo "  ✓ $version"
+        done
+    fi
+    
+    if [[ ${#versions_to_remove[@]} -eq 0 ]]; then
+        print_info "No Go versions to remove"
+        return
+    fi
+    
+    print_warning "Will remove ${#versions_to_remove[@]} Go version(s):"
+    for version in "${versions_to_remove[@]}"; do
+        echo "  ✗ $version"
+    done
     
     # Ask for confirmation if not in CI
     if [[ "${CI:-false}" != "true" ]]; then
-        echo "The following will be removed:"
-        for version in "${versions[@]}"; do
-            echo "  - $version"
-        done
         echo
         read -p "Continue with removal? (y/N) " -n 1 -r
         echo
@@ -168,22 +239,41 @@ remove_go_versions() {
     fi
     
     # Remove versions
-    for version in "${versions[@]}"; do
+    for version in "${versions_to_remove[@]}"; do
         rm -f "$version"
         REMOVED_ITEMS+=("Go binary: $version")
     done
     
-    # Remove SDK directories
+    # Always remove default symlink when removing any versions
+    if [[ -L "$GOBIN/go" ]]; then
+        rm -f "$GOBIN/go"
+        REMOVED_ITEMS+=("Default Go symlink")
+    fi
+    
+    # Handle SDK directories
     if [[ -d "$SDK_DIR" ]]; then
-        local sdk_count=$(find "$SDK_DIR" -maxdepth 1 -name "go*" -type d 2>/dev/null | wc -l)
-        if [[ $sdk_count -gt 0 ]]; then
-            print_info "Removing $sdk_count SDK director(ies) from $SDK_DIR..."
-            rm -rf "$SDK_DIR"/go*
-            REMOVED_ITEMS+=("SDK directories from $SDK_DIR")
+        local sdks_to_remove=()
+        
+        # Find SDKs to remove based on removed versions
+        for version in "${versions_to_remove[@]}"; do
+            local version_name=$(basename "$version")
+            if [[ -d "$SDK_DIR/$version_name" ]]; then
+                sdks_to_remove+=("$SDK_DIR/$version_name")
+            fi
+        done
+        
+        if [[ ${#sdks_to_remove[@]} -gt 0 ]]; then
+            print_info "Removing ${#sdks_to_remove[@]} SDK director(ies)..."
+            for sdk in "${sdks_to_remove[@]}"; do
+                rm -rf "$sdk"
+                REMOVED_ITEMS+=("SDK directory: $sdk")
+            done
         fi
     fi
     
-    print_success "Removed all gman-installed Go versions"
+    if [[ ${#versions_to_remove[@]} -gt 0 ]]; then
+        print_success "Removed selected Go versions"
+    fi
 }
 
 # Remove PATH entries from shell profiles
@@ -260,13 +350,95 @@ cleanup_directories() {
     fi
 }
 
+# Parse command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --remove-all)
+                REMOVAL_MODE="remove-all"
+                shift
+                ;;
+            --keep-default)
+                REMOVAL_MODE="keep-default"
+                shift
+                ;;
+            --keep-all)
+                REMOVAL_MODE="keep-all"
+                shift
+                ;;
+            -h|--help)
+                show_help
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                echo "Use -h or --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Ask user what to do with Go versions
+ask_removal_mode() {
+    echo "What would you like to do with gman-installed Go versions?"
+    echo ""
+    echo "  1) Remove all Go versions (recommended for complete cleanup)"
+    echo "  2) Keep only the default Go version"
+    echo "  3) Keep all Go versions (only remove gman itself)"
+    echo ""
+    
+    while true; do
+        read -p "Please choose an option [1-3]: " -n 1 -r
+        echo
+        case $REPLY in
+            1)
+                REMOVAL_MODE="remove-all"
+                break
+                ;;
+            2)
+                REMOVAL_MODE="keep-default"
+                break
+                ;;
+            3)
+                REMOVAL_MODE="keep-all"
+                break
+                ;;
+            *)
+                print_error "Invalid option. Please choose 1, 2, or 3."
+                ;;
+        esac
+    done
+}
+
 # Main uninstallation
 main() {
-    echo -e "${RED}goverman uninstaller${NC}"
+    echo -e "${BLUE}goverman uninstaller${NC}"
     echo "====================="
     echo
     
-    print_warning "This will remove gman and all gman-installed Go versions"
+    # Parse command line arguments
+    parse_args "$@"
+    
+    # If no mode specified and not in CI, ask the user
+    if [[ -z "$REMOVAL_MODE" && "${CI:-false}" != "true" ]]; then
+        ask_removal_mode
+    elif [[ -z "$REMOVAL_MODE" ]]; then
+        # Default to remove-all in CI or when not specified
+        REMOVAL_MODE="remove-all"
+    fi
+    
+    # Show what will be done
+    case "$REMOVAL_MODE" in
+        remove-all)
+            print_warning "Will remove gman and all gman-installed Go versions"
+            ;;
+        keep-default)
+            print_warning "Will remove gman and non-default Go versions"
+            ;;
+        keep-all)
+            print_warning "Will remove only gman (keeping all Go versions)"
+            ;;
+    esac
     echo
     
     # Check permissions
@@ -275,8 +447,15 @@ main() {
     # Remove components
     remove_gman_binary
     remove_man_page
-    remove_go_versions
-    remove_path_entries
+    handle_go_versions "$REMOVAL_MODE"
+    
+    # Only remove PATH entries if we're removing gman completely
+    if [[ "$REMOVAL_MODE" != "keep-all" ]]; then
+        remove_path_entries
+    else
+        print_info "Keeping PATH entries since Go versions are retained"
+    fi
+    
     cleanup_directories
     
     # Summary
@@ -293,8 +472,18 @@ main() {
     fi
     
     echo "Notes:"
-    echo "  - Shell profile backups were created with .goverman-backup extension"
-    echo "  - Restart your shell or open a new terminal for PATH changes to take effect"
+    if [[ "$REMOVAL_MODE" != "keep-all" ]]; then
+        echo "  - Shell profile backups were created with .goverman-backup extension"
+        echo "  - Restart your shell or open a new terminal for PATH changes to take effect"
+    fi
+    
+    if [[ "$REMOVAL_MODE" == "keep-all" || "$REMOVAL_MODE" == "keep-default" ]]; then
+        echo "  - Remaining Go versions can still be used directly (e.g., go1.23.9)"
+        if [[ "$REMOVAL_MODE" == "keep-default" ]]; then
+            echo "  - You may need to recreate the default 'go' symlink manually"
+        fi
+    fi
+    
     echo "  - System Go installations (if any) were not affected"
     echo
     
