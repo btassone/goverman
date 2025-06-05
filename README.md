@@ -28,22 +28,12 @@ This will:
 - Set up your PATH automatically
 - Install the man page (if available)
 
-## Quick Update
+## Updating
 
 Update gman to the latest version:
 
 ```bash
 gman-update
-```
-
-Or using curl:
-```bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
-```
-
-Or using wget:
-```bash
-wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
 ```
 
 This will:
@@ -52,22 +42,12 @@ This will:
 - Create a backup of the current version
 - Preserve your existing Go installations
 
-## Quick Uninstall
+## Uninstalling
 
 Completely remove goverman and all installed Go versions:
 
 ```bash
 gman-uninstall
-```
-
-Or using curl:
-```bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
-```
-
-Or using wget:
-```bash
-wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
 ```
 
 This will:
