@@ -271,9 +271,8 @@ gman list-available --all       # List all available versions
 # Set default version
 gman set-default 1.23.9
 
-# Update gman itself
-gman check-update               # Check for gman updates
-gman self-update                # Update gman to latest version
+# Update gman itself (use update.sh script)
+# curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
 
 # Check gman version
 gman version

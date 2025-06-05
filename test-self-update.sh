@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Test script for gman self-update functionality
-# This creates a temporary installation to test updates
+# Test script to verify self-update commands have been removed
+# This ensures the deprecated commands are no longer available
 
 set -e
 
-echo "Testing gman self-update functionality..."
-echo "========================================"
+echo "Testing removal of self-update commands..."
+echo "=========================================="
 echo ""
 
 # Create temporary directory
@@ -17,23 +17,22 @@ trap "rm -rf $TEMP_DIR" EXIT
 cp gman "$TEMP_DIR/gman"
 chmod +x "$TEMP_DIR/gman"
 
-# Test 1: Check update command
-echo "Test 1: Check for updates"
-if "$TEMP_DIR/gman" check-update 2>&1 | grep -E "(You are running the latest version|Update available|Could not fetch)"; then
-    echo "✓ Test 1 passed - check-update command executed"
-    # Note: We accept "Could not fetch" as passing because some CI environments have SSL issues
+# Test 1: Verify check-update command is removed
+echo "Test 1: Verify check-update command is removed"
+if "$TEMP_DIR/gman" check-update 2>&1 | grep -q "Unknown command"; then
+    echo "✓ Test 1 passed - check-update command properly removed"
 else
-    echo "✗ Test 1 failed - unexpected output from check-update"
+    echo "✗ Test 1 failed - check-update command still exists"
     exit 1
 fi
 echo ""
 
-# Test 2: Verify self-update detects git repo
-echo "Test 2: Self-update in git repo (should fail)"
-if ./gman self-update 2>&1 | grep -q "git repository"; then
-    echo "✓ Test 2 passed - correctly detected git repo"
+# Test 2: Verify self-update command is removed
+echo "Test 2: Verify self-update command is removed"
+if "$TEMP_DIR/gman" self-update 2>&1 | grep -q "Unknown command"; then
+    echo "✓ Test 2 passed - self-update command properly removed"
 else
-    echo "✗ Test 2 failed - did not detect git repo"
+    echo "✗ Test 2 failed - self-update command still exists"
     exit 1
 fi
 echo ""
@@ -70,26 +69,19 @@ else
 fi
 echo ""
 
-# Test 5: Simulate version mismatch (would trigger update in real scenario)
-echo "Test 5: Simulate old version"
-# Modify version in temp copy
-sed -i.bak 's/GMAN_VERSION="v[0-9.]*"/GMAN_VERSION="v1.0.0"/' "$TEMP_DIR/gman"
-CHECK_OUTPUT=$("$TEMP_DIR/gman" check-update 2>&1)
-if echo "$CHECK_OUTPUT" | grep -q "Update available"; then
-    echo "✓ Test 5 passed - correctly detected update available"
-elif echo "$CHECK_OUTPUT" | grep -q "Could not fetch"; then
-    echo "⚠ Test 5 skipped - SSL/network issues prevent version check"
-    # Don't fail in CI environments with SSL issues
-else
-    echo "✗ Test 5 failed - unexpected output: $CHECK_OUTPUT"
+# Test 5: Verify help text doesn't mention self-update
+echo "Test 5: Verify help text updated"
+HELP_OUTPUT=$("$TEMP_DIR/gman" help 2>&1)
+if echo "$HELP_OUTPUT" | grep -q "self-update\|check-update"; then
+    echo "✗ Test 5 failed - help text still mentions self-update commands"
     exit 1
+else
+    echo "✓ Test 5 passed - help text properly updated"
 fi
 echo ""
 
 echo "======================================"
 echo "All tests passed!"
 echo ""
-echo "Note: Full self-update test requires running outside git repo"
-echo "To test actual update:"
-echo "  1. Copy gman to /usr/local/bin/"
-echo "  2. Run: gman self-update"
+echo "Note: To update gman, use the standalone script:"
+echo "  curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash"

@@ -12,8 +12,6 @@
 #   list                                     List installed Go versions
 #   list-available [--all]                   List available Go versions
 #   set-default <version>                    Set a version as the default 'go' command
-#   check-update                             Check for gman updates
-#   self-update                              Update gman to latest version
 #   version                                  Show gman version
 #   help                                     Show this help message
 
@@ -36,8 +34,6 @@ show_usage() {
     echo "  list                                     List installed Go versions"
     echo "  list-available [--all]                   List available Go versions to install"
     echo "  set-default <version>                    Set a version as the default 'go' command"
-    echo "  check-update                             Check if a newer version of gman is available"
-    echo "  self-update                              Update gman to the latest version"
     echo "  version                                  Show gman version"
     echo "  help                                     Show this help message"
     echo ""
@@ -69,8 +65,6 @@ show_usage() {
     echo "  gman list                                # List all installed versions"
     echo "  gman list-available                      # List recent available versions (top 20)"
     echo "  gman list-available --all                # List all available versions"
-    echo "  gman check-update                        # Check for gman updates"
-    echo "  gman self-update                         # Update gman to latest version"
     echo "  gman version                             # Show gman version"
     exit 0
 }
@@ -1862,69 +1856,6 @@ uninstall_all() {
     fi
 }
 
-# Function to check for updates
-check_for_updates() {
-    local current_version="${GMAN_VERSION#v}"  # Remove 'v' prefix
-    local check_only="${1:-false}"
-    
-    echo "Checking for updates..."
-    
-    # Get latest release version from GitHub
-    local latest_release=""
-    if command -v curl >/dev/null 2>&1; then
-        latest_release=$(curl -sL "https://api.github.com/repos/btassone/goverman/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
-    elif command -v wget >/dev/null 2>&1; then
-        latest_release=$(wget -qO- "https://api.github.com/repos/btassone/goverman/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
-    else
-        echo "Error: Neither curl nor wget is available"
-        return 1
-    fi
-    
-    if [[ -z "$latest_release" ]]; then
-        echo "Error: Could not fetch latest release information"
-        return 1
-    fi
-    
-    # Remove 'v' prefix for comparison
-    local latest_version="${latest_release#v}"
-    
-    # Compare versions
-    if [[ "$current_version" == "$latest_version" ]]; then
-        echo "✓ You are running the latest version (v$current_version)"
-        return 0
-    else
-        echo "Update available: v$current_version → $latest_release"
-        if [[ "$check_only" == "true" ]]; then
-            echo "Run 'gman self-update' to update"
-        fi
-        return 2  # Indicates update is available
-    fi
-}
-
-# Function to self-update gman
-self_update() {
-    echo "Fetching update script..."
-    echo ""
-    
-    # Download and run the update script
-    local update_url="https://raw.githubusercontent.com/btassone/goverman/main/update.sh"
-    
-    if command -v curl >/dev/null 2>&1; then
-        echo "Using curl to fetch update script..."
-        curl -fsSL "$update_url" | bash
-    elif command -v wget >/dev/null 2>&1; then
-        echo "Using wget to fetch update script..."
-        wget -qO- "$update_url" | bash
-    else
-        echo "Error: Neither curl nor wget is available"
-        echo "Cannot download update script"
-        echo ""
-        echo "You can manually update by running:"
-        echo "  Visit https://github.com/btassone/goverman/releases"
-        return 1
-    fi
-}
-
 # Command: install
 cmd_install() {
     # Save original PATH before any modifications
@@ -2088,12 +2019,6 @@ main() {
                 show_usage
             fi
             set_default_version "$1"
-            ;;
-        check-update)
-            check_for_updates "true"
-            ;;
-        self-update)
-            self_update
             ;;
         version|-v|--version)
             show_version

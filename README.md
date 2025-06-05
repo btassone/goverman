@@ -126,10 +126,10 @@ gman bootstrap 1.23.9   # Specific version
 - Detects and warns about PATH conflicts
 - Automatic fallback from official to direct method
 
-### 🔄 Self-Update
-- Check for updates: `gman check-update`
-- One-command update: `gman self-update`
+### 🔄 Easy Updates
+- One-command update: `curl -fsSL .../update.sh | bash`
 - Automatic backup before updates
+- Preserves all your Go installations
 
 ## Prerequisites
 
@@ -263,31 +263,6 @@ Set an installed version as the default `go` command:
 gman set-default 1.23.9
 ```
 
-#### Check for Updates
-
-Check if a newer version of gman is available:
-```bash
-gman check-update
-```
-
-#### Self-Update
-
-Update gman to the latest version:
-```bash
-gman self-update
-```
-
-Or use the standalone update script:
-```bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
-```
-
-Note: If installed in a system directory, you may need to run with sudo:
-```bash
-sudo gman self-update
-# or
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | sudo bash
-```
 
 #### Help
 
@@ -317,10 +292,6 @@ gman list-available             # List available versions
 gman set-default 1.23.9         # Set default go command
 gman uninstall 1.23.9           # Remove a version
 gman uninstall-all              # Remove all versions
-
-# Updates
-gman check-update               # Check for gman updates
-gman self-update                # Update gman to latest version
 
 # Other
 gman version                    # Show gman version
