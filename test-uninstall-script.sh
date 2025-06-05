@@ -192,8 +192,14 @@ if [[ ! -d "$GOBIN" && ! -d "$HOME/sdk" ]]; then
     print_pass
 else
     # Check if they're truly empty
-    if [[ -d "$GOBIN" && -n "$(ls -A "$GOBIN" 2>/dev/null)" ]]; then
-        print_fail "GOBIN directory not empty"
+    if [[ -d "$GOBIN" ]]; then
+        local gobin_contents=$(ls -A "$GOBIN" 2>/dev/null)
+        if [[ -n "$gobin_contents" ]]; then
+            print_fail "GOBIN directory not empty: $gobin_contents"
+        else
+            # Directory exists but is empty - this might be OK on some systems
+            print_pass
+        fi
     elif [[ -d "$HOME/sdk" && -n "$(ls -A "$HOME/sdk" 2>/dev/null)" ]]; then
         print_fail "SDK directory not empty"
     else

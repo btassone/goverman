@@ -207,7 +207,7 @@ cleanup_directories() {
     # Remove empty GOBIN directory
     if [[ -d "$GOBIN" ]]; then
         if [[ -z "$(ls -A "$GOBIN" 2>/dev/null)" ]]; then
-            rmdir "$GOBIN"
+            rmdir "$GOBIN" 2>/dev/null || rm -rf "$GOBIN"
             REMOVED_ITEMS+=("Empty directory: $GOBIN")
         fi
     fi
@@ -215,7 +215,7 @@ cleanup_directories() {
     # Remove empty SDK directory
     if [[ -d "$SDK_DIR" ]]; then
         if [[ -z "$(ls -A "$SDK_DIR" 2>/dev/null)" ]]; then
-            rmdir "$SDK_DIR"
+            rmdir "$SDK_DIR" 2>/dev/null || rm -rf "$SDK_DIR"
             REMOVED_ITEMS+=("Empty directory: $SDK_DIR")
         fi
     fi
@@ -226,12 +226,12 @@ cleanup_directories() {
         # First try to remove the bin subdirectory if it's empty and is our GOBIN
         if [[ -d "$go_dir/bin" && "$GOBIN" == "$go_dir/bin" ]]; then
             if [[ -z "$(ls -A "$go_dir/bin" 2>/dev/null)" ]]; then
-                rmdir "$go_dir/bin" 2>/dev/null || true
+                rmdir "$go_dir/bin" 2>/dev/null || rm -rf "$go_dir/bin" 2>/dev/null || true
             fi
         fi
         # Then try to remove the go directory if it's empty
         if [[ -z "$(ls -A "$go_dir" 2>/dev/null)" ]]; then
-            rmdir "$go_dir"
+            rmdir "$go_dir" 2>/dev/null || rm -rf "$go_dir"
             REMOVED_ITEMS+=("Empty directory: $go_dir")
         fi
     fi
