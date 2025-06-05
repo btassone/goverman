@@ -223,6 +223,13 @@ cleanup_directories() {
     # Remove empty go directory if it exists
     local go_dir="${GOPATH:-$HOME/go}"
     if [[ -d "$go_dir" ]]; then
+        # First try to remove the bin subdirectory if it's empty and is our GOBIN
+        if [[ -d "$go_dir/bin" && "$GOBIN" == "$go_dir/bin" ]]; then
+            if [[ -z "$(ls -A "$go_dir/bin" 2>/dev/null)" ]]; then
+                rmdir "$go_dir/bin" 2>/dev/null || true
+            fi
+        fi
+        # Then try to remove the go directory if it's empty
         if [[ -z "$(ls -A "$go_dir" 2>/dev/null)" ]]; then
             rmdir "$go_dir"
             REMOVED_ITEMS+=("Empty directory: $go_dir")
