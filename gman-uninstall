@@ -141,11 +141,29 @@ find_go_versions() {
     
     # Check in GOBIN
     if [[ -d "$GOBIN" ]]; then
+        # Find versioned Go binaries (go1.23.9, etc.)
         for file in "$GOBIN"/go[0-9]*; do
             if [[ -x "$file" ]]; then
                 versions+=("$file")
             fi
         done
+        
+        # Check for 'go' binary (both symlink and regular file)
+        if [[ -e "$GOBIN/go" ]]; then
+            # If it's a symlink to a versioned binary, it's already counted
+            if [[ -L "$GOBIN/go" ]]; then
+                local target=$(readlink "$GOBIN/go" 2>/dev/null || true)
+                # If symlink points to a go[0-9]* binary, it's already in our list
+                if [[ ! "$target" =~ go[0-9] ]]; then
+                    # Symlink to something else, include it
+                    versions+=("$GOBIN/go")
+                fi
+            else
+                # It's a regular file, likely from bootstrap or direct install
+                # Check if it's in GOBIN (which means it's likely gman-managed)
+                versions+=("$GOBIN/go")
+            fi
+        fi
     fi
     
     echo "${versions[@]}"
@@ -261,6 +279,44 @@ handle_go_versions() {
                 sdks_to_remove+=("$SDK_DIR/$version_name")
             fi
         done
+        
+        # If we're removing the 'go' binary, try to detect which SDK it belongs to
+        for version in "${versions_to_remove[@]}"; do
+            if [[ "$(basename "$version")" == "go" ]]; then
+                # Check if the go binary can report its version
+                local go_version=$("$version" version 2>/dev/null | grep -oE 'go[0-9]+\.[0-9]+\.?[0-9]*' || true)
+                if [[ -n "$go_version" && -d "$SDK_DIR/$go_version" ]]; then
+                    sdks_to_remove+=("$SDK_DIR/$go_version")
+                fi
+                
+                # Also check for any SDK that doesn't have a corresponding versioned binary
+                for sdk in "$SDK_DIR"/go*; do
+                    if [[ -d "$sdk" ]]; then
+                        local sdk_name=$(basename "$sdk")
+                        # If no versioned binary exists for this SDK, it might belong to the 'go' binary
+                        if [[ ! -f "$GOBIN/$sdk_name" ]]; then
+                            sdks_to_remove+=("$sdk")
+                        fi
+                    fi
+                done
+            fi
+        done
+        
+        # Remove duplicates from sdks_to_remove
+        local unique_sdks=()
+        for sdk in "${sdks_to_remove[@]}"; do
+            local is_duplicate=false
+            for unique in "${unique_sdks[@]}"; do
+                if [[ "$sdk" == "$unique" ]]; then
+                    is_duplicate=true
+                    break
+                fi
+            done
+            if [[ "$is_duplicate" == "false" ]]; then
+                unique_sdks+=("$sdk")
+            fi
+        done
+        sdks_to_remove=("${unique_sdks[@]}")
         
         if [[ ${#sdks_to_remove[@]} -gt 0 ]]; then
             print_info "Removing ${#sdks_to_remove[@]} SDK director(ies)..."

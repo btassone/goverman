@@ -274,6 +274,39 @@ else
     print_fail "Uninstaller failed with --remove-all flag"
 fi
 
+# Test 14: Test detection of plain 'go' binary
+print_test "Uninstaller detects plain 'go' binary as gman-installed"
+setup_mock_installation
+# Remove the symlink and create a plain go binary
+rm -f "$GOBIN/go"
+cat > "$GOBIN/go" << 'EOF'
+#!/bin/bash
+echo "go version go1.24.3 darwin/arm64"
+EOF
+chmod +x "$GOBIN/go"
+# Create corresponding SDK
+mkdir -p "$HOME/sdk/go1.24.3"
+
+sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_plain_go.sh"
+sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_plain_go.sh"
+chmod +x "$TEST_DIR/uninstall_plain_go.sh"
+
+# Run with --remove-all
+if bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all >/dev/null 2>&1; then
+    # Check that the plain go binary was removed
+    if [[ ! -f "$GOBIN/go" && ! -d "$HOME/sdk/go1.24.3" ]]; then
+        print_pass
+    else
+        if [[ -f "$GOBIN/go" ]]; then
+            print_fail "Plain go binary was not removed"
+        else
+            print_fail "SDK directory was not removed"
+        fi
+    fi
+else
+    print_fail "Uninstaller failed with plain go binary"
+fi
+
 # Summary
 echo
 echo "======================================="
