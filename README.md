@@ -9,6 +9,23 @@
 
 **goverman** is a simple and powerful Go version manager that allows you to install and manage multiple Go versions on your system. Unlike other version managers, goverman provides a unified tool called `gman` to easily install, uninstall, and switch between different Go versions without affecting your system's default Go installation.
 
+## Quick Install
+
+Install goverman with a single command:
+
+```bash
+# Using curl
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
+
+# Using wget
+wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
+```
+
+This will:
+- Install `gman` to `/usr/local/bin`
+- Set up your PATH automatically
+- Install the man page (if available)
+
 ## Why goverman?
 
 While tools like `gvm` (Go Version Manager) exist, many are no longer actively maintained. goverman fills this gap with:

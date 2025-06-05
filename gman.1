@@ -1,0 +1,134 @@
+.TH GMAN 1 "January 2025" "goverman v1.10.1" "User Commands"
+.SH NAME
+gman \- Go Version Manager
+.SH SYNOPSIS
+.B gman
+.I command
+.RI [ arguments ]
+.RI [ options ]
+.SH DESCRIPTION
+.B gman
+is a Go version manager that allows installing and managing multiple Go versions on a single system. It provides a unified tool to easily install, uninstall, and switch between different Go versions without affecting the system's default Go installation.
+.PP
+The tool supports two installation methods: official (using go install) and direct (binary download from go.dev). It can bootstrap Go on fresh systems without requiring an existing Go installation.
+.SH COMMANDS
+.TP
+.B bootstrap \fR[\fIversion\fR]
+Install Go on fresh systems without requiring Go to be already installed. If no version is specified, installs the latest stable version. The bootstrap installation goes to /usr/local/go and may require sudo privileges.
+.TP
+.B install \fIversion\fR [\fImethod\fR] [\fB\-\-default\fR]
+Install a specific Go version. The \fImethod\fR can be "official" (default) or "direct". Use \fB\-\-default\fR to set this version as the default go command after installation.
+.RS
+.IP \(bu 2
+.B official\fR: Uses \fBgo install golang.org/dl/goX.Y.Z@latest\fR (recommended)
+.IP \(bu 2
+.B direct\fR: Downloads and extracts binary directly from go.dev (fallback for ARM64 issues)
+.RE
+.TP
+.B uninstall \fIversion\fR
+Remove a specific installed Go version.
+.TP
+.B uninstall\-all
+Remove all gman-managed Go versions. Prompts for confirmation unless running in CI environment.
+.TP
+.B list
+List all installed Go versions with status indicators showing which is currently set as default.
+.TP
+.B list\-available \fR[\fB\-\-all\fR]
+List available Go versions from go.dev. By default shows recent versions. Use \fB\-\-all\fR to list all available versions.
+.TP
+.B set\-default \fIversion\fR
+Set an installed version as the default go command by creating a symlink.
+.TP
+.B version\fR, \fB\-v\fR, \fB\-\-version\fR
+Show the gman version.
+.TP
+.B help
+Display usage information.
+.SH OPTIONS
+.TP
+.B \-\-default
+When used with install command, sets the installed version as the default go command.
+.TP
+.B \-\-all
+When used with list-available command, shows all available versions instead of just recent ones.
+.SH ENVIRONMENT
+.TP
+.B GOBIN
+If set, gman will install Go versions to this directory. Otherwise uses ~/go/bin.
+.TP
+.B GOPATH
+If GOBIN is not set, gman will use $GOPATH/bin. Otherwise uses ~/go/bin.
+.TP
+.B CI
+When set to "true", disables interactive prompts (e.g., in uninstall-all).
+.SH FILES
+.TP
+.I ~/.bashrc\fR, \fI~/.bash_profile\fR, \fI~/.zshrc\fR, \fI~/.config/fish/config.fish
+Shell configuration files where gman adds PATH entries for installed Go versions.
+.TP
+.I ~/go/bin/go*
+Default location for installed Go version binaries.
+.TP
+.I ~/sdk/go*
+Location where Go SDKs are downloaded and extracted.
+.TP
+.I /usr/local/go
+Default location for bootstrap Go installation.
+.SH EXAMPLES
+.TP
+Bootstrap Go on a fresh system:
+.B gman bootstrap
+.TP
+Install Go 1.23.9 and set it as default:
+.B gman install 1.23.9 --default
+.TP
+Install using direct method (for ARM64 CGO issues):
+.B gman install 1.22.0 direct
+.TP
+List installed versions:
+.B gman list
+.TP
+Switch default version:
+.B gman set-default 1.22.0
+.TP
+Remove a specific version:
+.B gman uninstall 1.21.8
+.TP
+Remove all gman-managed versions:
+.B gman uninstall-all
+.SH PLATFORM SUPPORT
+.SS Operating Systems
+.IP \(bu 2
+Linux (Ubuntu, Debian, Fedora, CentOS, RHEL, AlmaLinux, Rocky Linux, openSUSE, Arch, Gentoo, Alpine)
+.IP \(bu 2
+macOS (Intel and Apple Silicon)
+.IP \(bu 2
+Windows (via WSL or Git Bash)
+.SS Architectures
+.IP \(bu 2
+amd64 (x86_64)
+.IP \(bu 2
+arm64 (aarch64)
+.IP \(bu 2
+armv6l (32-bit ARM)
+.SH NOTES
+.IP \(bu 2
+Alpine Linux users should use the direct installation method due to musl libc compatibility issues with official Go binaries.
+.IP \(bu 2
+When Homebrew Go is installed, PATH ordering can cause conflicts. The tool will detect and offer to fix these conflicts.
+.IP \(bu 2
+The official installation method requires a working Go installation (1.17+). Use bootstrap or direct method if Go is not available.
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+General error (invalid arguments, installation failure, etc.)
+.SH BUGS
+Report bugs at https://github.com/btassone/goverman/issues
+.SH AUTHOR
+Brandon Tassone
+.SH SEE ALSO
+.BR go (1)

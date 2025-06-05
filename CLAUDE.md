@@ -185,6 +185,24 @@ Based on git commits, we've recently worked on:
   - Made tests more forgiving when system Go takes precedence in CI
 - Released v1.8.1 with CI test fixes and support for 10+ distributions
 
+### 2025-06-04 Session (Part 2) - Man Page and Install Script
+- Created comprehensive man page (gman.1):
+  - Full documentation of all commands and options
+  - Platform support information
+  - Examples and usage patterns
+  - Environment variables and file locations
+  - Follows standard man page conventions
+- Created universal install script (install.sh):
+  - One-line installation via curl or wget
+  - Platform and architecture detection
+  - Installs gman to /usr/local/bin with appropriate permissions
+  - Installs man page to system man directory
+  - Automatic PATH configuration for bash, zsh, and fish
+  - Graceful handling when man page not yet in repository
+  - Clear success messages and next steps
+- Updated README with Quick Install section
+- Released v1.11.0 with man page and installer
+
 ## Usage Reminders
 ```bash
 # Bootstrap Go on a fresh system
