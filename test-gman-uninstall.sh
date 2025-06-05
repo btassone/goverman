@@ -79,7 +79,16 @@ setup_mock_installation() {
     chmod +x "$GOBIN/go1.22.0"
     # Remove any existing symlink before creating new one
     rm -f "$GOBIN/go"
-    ln -s go1.23.9 "$GOBIN/go"
+    # On Windows, symlinks might not work properly in Git Bash
+    # Check if we can create a symlink, otherwise skip this part
+    if ln -s go1.23.9 "$GOBIN/go" 2>/dev/null; then
+        # Symlink created successfully
+        :
+    else
+        # Symlink failed - this might affect keep-default test on Windows
+        # But the functionality should still work for detecting plain binaries
+        :
+    fi
     
     # Create SDK directories
     mkdir -p "$HOME/sdk/go1.23.9"
@@ -242,36 +251,64 @@ fi
 # Test 12: Test --keep-default flag  
 print_test "Uninstaller with --keep-default flag keeps only default version"
 setup_mock_installation
-sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
-    -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
-    gman-uninstall > "$TEST_DIR/uninstall_keep_default.sh"
-chmod +x "$TEST_DIR/uninstall_keep_default.sh"
 
-# Run with --keep-default
-# Use a subshell with timeout if available, otherwise just run normally
-if command -v timeout >/dev/null 2>&1; then
-    run_result=$(timeout 10 bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default 2>&1)
-    exit_code=$?
-else
+# Check if symlink was created successfully
+if [[ -L "$GOBIN/go" ]]; then
+    # Symlink exists, run the test normally
+    sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+        -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+        gman-uninstall > "$TEST_DIR/uninstall_keep_default.sh"
+    chmod +x "$TEST_DIR/uninstall_keep_default.sh"
+
+    # Run with --keep-default
+    # Run without timeout - it should complete quickly
     run_result=$(bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default 2>&1)
     exit_code=$?
-fi
 
-if [[ $exit_code -eq 0 ]]; then
-    # Check that gman is removed, default version remains, other is removed
-    if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" ]]; then
-        print_pass
+    if [[ $exit_code -eq 0 ]]; then
+        # Check that gman is removed, default version remains, other is removed
+        if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" ]]; then
+            print_pass
+        else
+            print_fail "Unexpected state after --keep-default"
+            # Debug output
+            echo "DEBUG: gman exists: $(if [[ -f "$TEST_DIR/usr/local/bin/gman" ]]; then echo "YES"; else echo "NO"; fi)"
+            echo "DEBUG: go1.23.9 exists: $(if [[ -f "$GOBIN/go1.23.9" ]]; then echo "YES"; else echo "NO"; fi)"
+            echo "DEBUG: go1.22.0 exists: $(if [[ -f "$GOBIN/go1.22.0" ]]; then echo "YES"; else echo "NO"; fi)"
+            echo "DEBUG: Contents of GOBIN:"
+            ls -la "$GOBIN" 2>/dev/null || echo "  GOBIN directory doesn't exist"
+            echo "DEBUG: First 50 lines of uninstaller output:"
+            echo "$run_result" | head -50
+        fi
     else
-        print_fail "Unexpected state after --keep-default"
-        # Debug output
-        echo "DEBUG: gman exists: $(if [[ -f "$TEST_DIR/usr/local/bin/gman" ]]; then echo "YES"; else echo "NO"; fi)"
-        echo "DEBUG: go1.23.9 exists: $(if [[ -f "$GOBIN/go1.23.9" ]]; then echo "YES"; else echo "NO"; fi)"
-        echo "DEBUG: go1.22.0 exists: $(if [[ -f "$GOBIN/go1.22.0" ]]; then echo "YES"; else echo "NO"; fi)"
+        print_fail "Uninstaller failed with --keep-default flag (exit code: $exit_code)"
+        echo "DEBUG: Output was:"
+        echo "$run_result" | head -20
     fi
 else
-    print_fail "Uninstaller failed with --keep-default flag (exit code: $exit_code)"
-    echo "DEBUG: Output was:"
-    echo "$run_result" | head -20
+    # No symlink (likely Windows), test that all versions are removed when no default exists
+    sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+        -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+        gman-uninstall > "$TEST_DIR/uninstall_keep_default.sh"
+    chmod +x "$TEST_DIR/uninstall_keep_default.sh"
+
+    run_result=$(bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default 2>&1)
+    exit_code=$?
+
+    if [[ $exit_code -eq 0 ]]; then
+        # When no default exists, --keep-default should remove all versions
+        if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && ! -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" ]]; then
+            print_pass
+        else
+            print_fail "Expected all versions to be removed when no default exists"
+            echo "DEBUG: No symlink exists, so no default version"
+            echo "DEBUG: gman exists: $(if [[ -f "$TEST_DIR/usr/local/bin/gman" ]]; then echo "YES"; else echo "NO"; fi)"
+            echo "DEBUG: go1.23.9 exists: $(if [[ -f "$GOBIN/go1.23.9" ]]; then echo "YES"; else echo "NO"; fi)"
+            echo "DEBUG: go1.22.0 exists: $(if [[ -f "$GOBIN/go1.22.0" ]]; then echo "YES"; else echo "NO"; fi)"
+        fi
+    else
+        print_fail "Uninstaller failed with --keep-default flag (exit code: $exit_code)"
+    fi
 fi
 
 # Test 13: Test --remove-all flag
@@ -313,14 +350,9 @@ sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
 chmod +x "$TEST_DIR/uninstall_plain_go.sh"
 
 # Run with --remove-all
-# Use a subshell with timeout if available, otherwise just run normally
-if command -v timeout >/dev/null 2>&1; then
-    run_result=$(timeout 10 bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all 2>&1)
-    exit_code=$?
-else
-    run_result=$(bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all 2>&1)
-    exit_code=$?
-fi
+# Run without timeout - it should complete quickly
+run_result=$(bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all 2>&1)
+exit_code=$?
 
 if [[ $exit_code -eq 0 ]]; then
     # Check that the plain go binary was removed
