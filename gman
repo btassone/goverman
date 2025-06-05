@@ -5,10 +5,16 @@
 # 
 # Usage: gman <command> [options]
 # Commands:
+#   bootstrap [version]                      Install Go on a fresh system
 #   install <version> [method] [--default]   Install a Go version
 #   uninstall <version>                      Uninstall a Go version
+#   uninstall-all                            Uninstall all gman-managed versions
 #   list                                     List installed Go versions
+#   list-available [--all]                   List available Go versions
 #   set-default <version>                    Set a version as the default 'go' command
+#   check-update                             Check for gman updates
+#   self-update                              Update gman to latest version
+#   version                                  Show gman version
 #   help                                     Show this help message
 
 set -e
@@ -30,6 +36,8 @@ show_usage() {
     echo "  list                                     List installed Go versions"
     echo "  list-available [--all]                   List available Go versions to install"
     echo "  set-default <version>                    Set a version as the default 'go' command"
+    echo "  check-update                             Check if a newer version of gman is available"
+    echo "  self-update                              Update gman to the latest version"
     echo "  version                                  Show gman version"
     echo "  help                                     Show this help message"
     echo ""
@@ -61,6 +69,8 @@ show_usage() {
     echo "  gman list                                # List all installed versions"
     echo "  gman list-available                      # List recent available versions (top 20)"
     echo "  gman list-available --all                # List all available versions"
+    echo "  gman check-update                        # Check for gman updates"
+    echo "  gman self-update                         # Update gman to latest version"
     echo "  gman version                             # Show gman version"
     exit 0
 }
@@ -1852,6 +1862,160 @@ uninstall_all() {
     fi
 }
 
+# Function to check for updates
+check_for_updates() {
+    local current_version="${GMAN_VERSION#v}"  # Remove 'v' prefix
+    local check_only="${1:-false}"
+    
+    echo "Checking for updates..."
+    
+    # Get latest release version from GitHub
+    local latest_release=""
+    if command -v curl >/dev/null 2>&1; then
+        latest_release=$(curl -sL "https://api.github.com/repos/btassone/goverman/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+    elif command -v wget >/dev/null 2>&1; then
+        latest_release=$(wget -qO- "https://api.github.com/repos/btassone/goverman/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+    else
+        echo "Error: Neither curl nor wget is available"
+        return 1
+    fi
+    
+    if [[ -z "$latest_release" ]]; then
+        echo "Error: Could not fetch latest release information"
+        return 1
+    fi
+    
+    # Remove 'v' prefix for comparison
+    local latest_version="${latest_release#v}"
+    
+    # Compare versions
+    if [[ "$current_version" == "$latest_version" ]]; then
+        echo "✓ You are running the latest version (v$current_version)"
+        return 0
+    else
+        echo "Update available: v$current_version → $latest_release"
+        if [[ "$check_only" == "true" ]]; then
+            echo "Run 'gman self-update' to update"
+        fi
+        return 2  # Indicates update is available
+    fi
+}
+
+# Function to self-update gman
+self_update() {
+    # Check if we're running from a git repository
+    if [[ -d .git ]] || git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "Warning: You are running gman from a git repository."
+        echo "Please use 'git pull' to update instead."
+        return 1
+    fi
+    
+    # Check for updates first
+    if ! check_for_updates; then
+        if [[ $? -eq 2 ]]; then
+            # Update is available, continue
+            :
+        else
+            return 1
+        fi
+    else
+        # Already up to date
+        return 0
+    fi
+    
+    # Get the path to the current gman binary
+    local gman_path=""
+    if [[ -L "$0" ]]; then
+        # It's a symlink, follow it
+        if command -v realpath >/dev/null 2>&1; then
+            gman_path=$(realpath "$0")
+        elif command -v readlink >/dev/null 2>&1 && readlink -f "$0" >/dev/null 2>&1; then
+            gman_path=$(readlink -f "$0")
+        else
+            # macOS doesn't have readlink -f, so we use a workaround
+            local target=$(readlink "$0")
+            if [[ "$target" = /* ]]; then
+                gman_path="$target"
+            else
+                gman_path="$(dirname "$0")/$target"
+            fi
+        fi
+    else
+        gman_path="$0"
+    fi
+    
+    # Make it absolute
+    gman_path=$(cd "$(dirname "$gman_path")" && pwd)/$(basename "$gman_path")
+    
+    echo ""
+    echo "Current gman location: $gman_path"
+    
+    # Check if we have write permission
+    if [[ ! -w "$gman_path" ]]; then
+        echo "Error: No write permission for $gman_path"
+        echo "You may need to run with sudo: sudo gman self-update"
+        return 1
+    fi
+    
+    # Create temporary file
+    local temp_file=$(mktemp)
+    trap "rm -f $temp_file" EXIT
+    
+    # Download latest version
+    echo "Downloading latest version..."
+    local download_url="https://raw.githubusercontent.com/btassone/goverman/main/gman"
+    local download_status=1
+    
+    if command -v curl >/dev/null 2>&1; then
+        if curl -sL -o "$temp_file" "$download_url"; then
+            download_status=0
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if wget -qO "$temp_file" "$download_url"; then
+            download_status=0
+        fi
+    fi
+    
+    if [[ $download_status -ne 0 ]] || [[ ! -s "$temp_file" ]]; then
+        echo "Error: Failed to download latest version"
+        return 1
+    fi
+    
+    # Verify the download is a valid shell script
+    if ! head -1 "$temp_file" | grep -q "^#!/bin/bash"; then
+        echo "Error: Downloaded file does not appear to be a valid gman script"
+        return 1
+    fi
+    
+    # Backup current version
+    local backup_file="${gman_path}.backup.$(date +%s)"
+    cp "$gman_path" "$backup_file"
+    echo "Created backup: $backup_file"
+    
+    # Replace current version
+    if mv "$temp_file" "$gman_path"; then
+        chmod +x "$gman_path"
+        echo "✓ Successfully updated gman!"
+        
+        # Get new version
+        local new_version=$("$gman_path" version 2>/dev/null | awk '{print $2}')
+        echo "New version: $new_version"
+        
+        # Clean up old backup files (keep only last 3)
+        local backup_dir=$(dirname "$backup_file")
+        local backup_base=$(basename "$gman_path")
+        ls -t "$backup_dir/${backup_base}.backup."* 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+        
+        echo ""
+        echo "Update completed successfully!"
+    else
+        echo "Error: Failed to update gman"
+        echo "Restoring from backup..."
+        mv "$backup_file" "$gman_path"
+        return 1
+    fi
+}
+
 # Command: install
 cmd_install() {
     # Save original PATH before any modifications
@@ -2015,6 +2179,12 @@ main() {
                 show_usage
             fi
             set_default_version "$1"
+            ;;
+        check-update)
+            check_for_updates "true"
+            ;;
+        self-update)
+            self_update
             ;;
         version|-v|--version)
             show_version

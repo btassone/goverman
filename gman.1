@@ -40,6 +40,12 @@ List available Go versions from go.dev. By default shows recent versions. Use \f
 .B set\-default \fIversion\fR
 Set an installed version as the default go command by creating a symlink.
 .TP
+.B check\-update
+Check if a newer version of gman is available on GitHub.
+.TP
+.B self\-update
+Update gman to the latest version. Downloads the latest release from GitHub and replaces the current binary. Creates a backup of the current version before updating.
+.TP
 .B version\fR, \fB\-v\fR, \fB\-\-version\fR
 Show the gman version.
 .TP
@@ -97,6 +103,12 @@ Remove a specific version:
 .TP
 Remove all gman-managed versions:
 .B gman uninstall-all
+.TP
+Check for gman updates:
+.B gman check-update
+.TP
+Update gman to latest version:
+.B gman self-update
 .SH PLATFORM SUPPORT
 .SS Operating Systems
 .IP \(bu 2

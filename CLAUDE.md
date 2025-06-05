@@ -224,13 +224,36 @@ Based on git commits, we've recently worked on:
   - All tests now passing on Linux, macOS, and Windows
 - Released v1.12.1 with CI fixes
 
+### 2025-06-05 Session - Bootstrap Latest and Self-Update
+- Added support for `gman bootstrap latest` command:
+  - Allows explicit latest version selection for bootstrap
+  - Provides consistency with `gman install latest`
+  - Updated help text and examples
+- Released v1.13.0 with bootstrap latest support
+- Added self-update functionality:
+  - `gman check-update` - Checks GitHub for newer releases
+  - `gman self-update` - Downloads and installs latest version
+  - Detects git repository and suggests `git pull` instead
+  - Creates backups before updating (keeps last 3)
+  - Verifies downloaded file is valid shell script
+  - Handles symlinks and regular files
+  - Cross-platform compatible (handles macOS readlink limitations)
+- Updated documentation:
+  - Added self-update commands to help text
+  - Updated man page with new commands
+  - Updated README with self-update documentation
+  - Added examples for all new features
+- Created test-self-update.sh for verification
+
 ## Usage Reminders
 ```bash
 # Bootstrap Go on a fresh system
 gman bootstrap                  # Install latest stable Go
+gman bootstrap latest           # Explicitly install latest version
 gman bootstrap 1.23.9           # Install specific version
 
 # Install a Go version
+gman install latest             # Install latest stable version
 gman install 1.23.9 [official|direct] [--default]
 
 # Uninstall versions
@@ -244,6 +267,10 @@ gman list-available --all       # List all available versions
 
 # Set default version
 gman set-default 1.23.9
+
+# Update gman itself
+gman check-update               # Check for gman updates
+gman self-update                # Update gman to latest version
 
 # Check gman version
 gman version

@@ -77,6 +77,7 @@ Goverman is a Go version management tool that helps developers who need to work 
 Install Go on fresh systems without any prerequisites:
 ```bash
 gman bootstrap          # Latest stable version
+gman bootstrap latest   # Explicitly latest version
 gman bootstrap 1.23.9   # Specific version
 ```
 
@@ -104,6 +105,11 @@ gman bootstrap 1.23.9   # Specific version
 - Handles broken Go installations gracefully
 - Detects and warns about PATH conflicts
 - Automatic fallback from official to direct method
+
+### 🔄 Self-Update
+- Check for updates: `gman check-update`
+- One-command update: `gman self-update`
+- Automatic backup before updates
 
 ## Prerequisites
 
@@ -160,6 +166,9 @@ If you don't have Go installed yet, use the bootstrap command to install Go with
 ```bash
 # Install the latest stable Go version
 gman bootstrap
+
+# Explicitly install latest Go version
+gman bootstrap latest
 
 # Install a specific Go version
 gman bootstrap 1.23.9
@@ -234,6 +243,25 @@ Set an installed version as the default `go` command:
 gman set-default 1.23.9
 ```
 
+#### Check for Updates
+
+Check if a newer version of gman is available:
+```bash
+gman check-update
+```
+
+#### Self-Update
+
+Update gman to the latest version:
+```bash
+gman self-update
+```
+
+Note: If installed in a system directory, you may need to run with sudo:
+```bash
+sudo gman self-update
+```
+
 #### Help
 
 Show usage information:
@@ -246,6 +274,7 @@ gman help
 ```bash
 # Bootstrap (for fresh systems without Go)
 gman bootstrap                  # Install latest stable Go
+gman bootstrap latest           # Explicitly install latest Go
 gman bootstrap 1.23.9           # Install specific version
 
 # Install additional Go versions
@@ -261,6 +290,10 @@ gman list-available             # List available versions
 gman set-default 1.23.9         # Set default go command
 gman uninstall 1.23.9           # Remove a version
 gman uninstall-all              # Remove all versions
+
+# Updates
+gman check-update               # Check for gman updates
+gman self-update                # Update gman to latest version
 
 # Other
 gman version                    # Show gman version
