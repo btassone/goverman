@@ -13,11 +13,13 @@
 
 Install goverman with a single command:
 
+Using curl:
 ```bash
-# Using curl
 curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
+```
 
-# Using wget
+Using wget:
+```bash
 wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
 ```
 
@@ -30,11 +32,13 @@ This will:
 
 Completely remove goverman and all installed Go versions:
 
+Using curl:
 ```bash
-# Using curl
 curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
+```
 
-# Using wget
+Using wget:
+```bash
 wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
 ```
 
