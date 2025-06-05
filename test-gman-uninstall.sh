@@ -105,7 +105,8 @@ setup_mock_installation() {
 
 # Cleanup function
 cleanup() {
-    rm -rf "$TEST_DIR"
+    chmod -R 755 "$TEST_DIR" 2>/dev/null || true
+    rm -rf "$TEST_DIR" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -121,8 +122,9 @@ fi
 print_test "Uninstaller removes gman binary"
 setup_mock_installation
 # Modify gman-uninstall to use our test directories
-sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_test.sh"
-sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_test.sh"
+sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+    -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+    gman-uninstall > "$TEST_DIR/uninstall_test.sh"
 chmod +x "$TEST_DIR/uninstall_test.sh"
 
 # Run uninstaller
@@ -220,8 +222,9 @@ fi
 # Test 11: Test --keep-all flag
 print_test "Uninstaller with --keep-all flag keeps Go versions"
 setup_mock_installation
-sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_keep_all.sh"
-sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_keep_all.sh"
+sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+    -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+    gman-uninstall > "$TEST_DIR/uninstall_keep_all.sh"
 chmod +x "$TEST_DIR/uninstall_keep_all.sh"
 
 # Run with --keep-all
@@ -239,27 +242,44 @@ fi
 # Test 12: Test --keep-default flag  
 print_test "Uninstaller with --keep-default flag keeps only default version"
 setup_mock_installation
-sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_keep_default.sh"
-sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_keep_default.sh"
+sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+    -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+    gman-uninstall > "$TEST_DIR/uninstall_keep_default.sh"
 chmod +x "$TEST_DIR/uninstall_keep_default.sh"
 
 # Run with --keep-default
-if bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default >/dev/null 2>&1; then
+# Use a subshell with timeout if available, otherwise just run normally
+if command -v timeout >/dev/null 2>&1; then
+    run_result=$(timeout 10 bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default 2>&1)
+    exit_code=$?
+else
+    run_result=$(bash "$TEST_DIR/uninstall_keep_default.sh" --keep-default 2>&1)
+    exit_code=$?
+fi
+
+if [[ $exit_code -eq 0 ]]; then
     # Check that gman is removed, default version remains, other is removed
     if [[ ! -f "$TEST_DIR/usr/local/bin/gman" && -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" ]]; then
         print_pass
     else
         print_fail "Unexpected state after --keep-default"
+        # Debug output
+        echo "DEBUG: gman exists: $(if [[ -f "$TEST_DIR/usr/local/bin/gman" ]]; then echo "YES"; else echo "NO"; fi)"
+        echo "DEBUG: go1.23.9 exists: $(if [[ -f "$GOBIN/go1.23.9" ]]; then echo "YES"; else echo "NO"; fi)"
+        echo "DEBUG: go1.22.0 exists: $(if [[ -f "$GOBIN/go1.22.0" ]]; then echo "YES"; else echo "NO"; fi)"
     fi
 else
-    print_fail "Uninstaller failed with --keep-default flag"
+    print_fail "Uninstaller failed with --keep-default flag (exit code: $exit_code)"
+    echo "DEBUG: Output was:"
+    echo "$run_result" | head -20
 fi
 
 # Test 13: Test --remove-all flag
 print_test "Uninstaller with --remove-all flag removes everything"
 setup_mock_installation
-sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_remove_all.sh"
-sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_remove_all.sh"
+sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+    -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+    gman-uninstall > "$TEST_DIR/uninstall_remove_all.sh"
 chmod +x "$TEST_DIR/uninstall_remove_all.sh"
 
 # Run with --remove-all
@@ -287,12 +307,22 @@ chmod +x "$GOBIN/go"
 # Create corresponding SDK
 mkdir -p "$HOME/sdk/go1.24.3"
 
-sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_plain_go.sh"
-sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_plain_go.sh"
+sed -e "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" \
+    -e "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" \
+    gman-uninstall > "$TEST_DIR/uninstall_plain_go.sh"
 chmod +x "$TEST_DIR/uninstall_plain_go.sh"
 
 # Run with --remove-all
-if bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all >/dev/null 2>&1; then
+# Use a subshell with timeout if available, otherwise just run normally
+if command -v timeout >/dev/null 2>&1; then
+    run_result=$(timeout 10 bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all 2>&1)
+    exit_code=$?
+else
+    run_result=$(bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all 2>&1)
+    exit_code=$?
+fi
+
+if [[ $exit_code -eq 0 ]]; then
     # Check that the plain go binary was removed
     if [[ ! -f "$GOBIN/go" && ! -d "$HOME/sdk/go1.24.3" ]]; then
         print_pass
@@ -304,7 +334,9 @@ if bash "$TEST_DIR/uninstall_plain_go.sh" --remove-all >/dev/null 2>&1; then
         fi
     fi
 else
-    print_fail "Uninstaller failed with plain go binary"
+    print_fail "Uninstaller failed with plain go binary (exit code: $exit_code)"
+    echo "DEBUG: First 20 lines of output:"
+    echo "$run_result" | head -20
 fi
 
 # Summary
