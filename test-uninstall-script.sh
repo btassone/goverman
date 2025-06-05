@@ -139,7 +139,7 @@ fi
 
 # Test 4: Test uninstaller removes Go versions
 print_test "Uninstaller removes Go versions"
-if [[ ! -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" && ! -L "$GOBIN/go" ]]; then
+if [[ ! -f "$GOBIN/go1.23.9" && ! -f "$GOBIN/go1.22.0" && ! -e "$GOBIN/go" ]]; then
     print_pass
 else
     print_fail "Go versions still exist"
@@ -195,6 +195,9 @@ else
     if [[ -d "$GOBIN" ]]; then
         gobin_contents=$(ls -A "$GOBIN" 2>/dev/null)
         if [[ -n "$gobin_contents" ]]; then
+            # Debug what's left
+            echo "Debug: GOBIN contents:"
+            ls -la "$GOBIN" 2>/dev/null || true
             print_fail "GOBIN directory not empty: $gobin_contents"
         else
             # Directory exists but is empty - this might be OK on some systems

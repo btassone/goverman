@@ -105,12 +105,15 @@ find_go_versions() {
         done
     fi
     
-    # Check for default symlink
+    # Check for default symlink or file named 'go'
     if [[ -L "$GOBIN/go" ]]; then
         local target=$(readlink "$GOBIN/go")
         if [[ "$target" =~ go[0-9] ]]; then
             versions+=("$GOBIN/go")
         fi
+    elif [[ -f "$GOBIN/go" ]]; then
+        # On Windows, symlinks might be regular files
+        versions+=("$GOBIN/go")
     fi
     
     echo "${versions[@]}"
