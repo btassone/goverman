@@ -216,6 +216,13 @@ Based on git commits, we've recently worked on:
   - Added to GitHub Actions workflow for all platforms
 - Updated README with Quick Uninstall section
 - Released v1.12.0 with uninstaller
+- Fixed CI test failures for uninstall.sh:
+  - Fixed nested GOBIN directory cleanup ($HOME/go/bin)
+  - Fixed Windows directory removal with rm -rf fallback
+  - Fixed bash syntax error (local keyword outside function)
+  - Fixed Windows symlink handling (treats as regular file)
+  - All tests now passing on Linux, macOS, and Windows
+- Released v1.12.1 with CI fixes
 
 ## Usage Reminders
 ```bash
