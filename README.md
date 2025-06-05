@@ -28,6 +28,26 @@ This will:
 - Set up your PATH automatically
 - Install the man page (if available)
 
+## Quick Update
+
+Update gman to the latest version:
+
+Using curl:
+```bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+```
+
+Using wget:
+```bash
+wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+```
+
+This will:
+- Check for the latest version
+- Download and install the update
+- Create a backup of the current version
+- Preserve your existing Go installations
+
 ## Quick Uninstall
 
 Completely remove goverman and all installed Go versions:
@@ -257,9 +277,16 @@ Update gman to the latest version:
 gman self-update
 ```
 
+Or use the standalone update script:
+```bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+```
+
 Note: If installed in a system directory, you may need to run with sudo:
 ```bash
 sudo gman self-update
+# or
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | sudo bash
 ```
 
 #### Help

@@ -1903,115 +1903,24 @@ check_for_updates() {
 
 # Function to self-update gman
 self_update() {
-    # Check if we're running from a git repository
-    if [[ -d .git ]] || git rev-parse --git-dir > /dev/null 2>&1; then
-        echo "Warning: You are running gman from a git repository."
-        echo "Please use 'git pull' to update instead."
-        return 1
-    fi
-    
-    # Check for updates first
-    if ! check_for_updates; then
-        if [[ $? -eq 2 ]]; then
-            # Update is available, continue
-            :
-        else
-            return 1
-        fi
-    else
-        # Already up to date
-        return 0
-    fi
-    
-    # Get the path to the current gman binary
-    local gman_path=""
-    if [[ -L "$0" ]]; then
-        # It's a symlink, follow it
-        if command -v realpath >/dev/null 2>&1; then
-            gman_path=$(realpath "$0")
-        elif command -v readlink >/dev/null 2>&1 && readlink -f "$0" >/dev/null 2>&1; then
-            gman_path=$(readlink -f "$0")
-        else
-            # macOS doesn't have readlink -f, so we use a workaround
-            local target=$(readlink "$0")
-            if [[ "$target" = /* ]]; then
-                gman_path="$target"
-            else
-                gman_path="$(dirname "$0")/$target"
-            fi
-        fi
-    else
-        gman_path="$0"
-    fi
-    
-    # Make it absolute
-    gman_path=$(cd "$(dirname "$gman_path")" && pwd)/$(basename "$gman_path")
-    
+    echo "Fetching update script..."
     echo ""
-    echo "Current gman location: $gman_path"
     
-    # Check if we have write permission
-    if [[ ! -w "$gman_path" ]]; then
-        echo "Error: No write permission for $gman_path"
-        echo "You may need to run with sudo: sudo gman self-update"
-        return 1
-    fi
-    
-    # Create temporary file
-    local temp_file=$(mktemp)
-    trap "rm -f $temp_file" EXIT
-    
-    # Download latest version
-    echo "Downloading latest version..."
-    local download_url="https://raw.githubusercontent.com/btassone/goverman/main/gman"
-    local download_status=1
+    # Download and run the update script
+    local update_url="https://raw.githubusercontent.com/btassone/goverman/main/update.sh"
     
     if command -v curl >/dev/null 2>&1; then
-        if curl -sL -o "$temp_file" "$download_url"; then
-            download_status=0
-        fi
+        echo "Using curl to fetch update script..."
+        curl -fsSL "$update_url" | bash
     elif command -v wget >/dev/null 2>&1; then
-        if wget -qO "$temp_file" "$download_url"; then
-            download_status=0
-        fi
-    fi
-    
-    if [[ $download_status -ne 0 ]] || [[ ! -s "$temp_file" ]]; then
-        echo "Error: Failed to download latest version"
-        return 1
-    fi
-    
-    # Verify the download is a valid shell script
-    if ! head -1 "$temp_file" | grep -q "^#!/bin/bash"; then
-        echo "Error: Downloaded file does not appear to be a valid gman script"
-        return 1
-    fi
-    
-    # Backup current version
-    local backup_file="${gman_path}.backup.$(date +%s)"
-    cp "$gman_path" "$backup_file"
-    echo "Created backup: $backup_file"
-    
-    # Replace current version
-    if mv "$temp_file" "$gman_path"; then
-        chmod +x "$gman_path"
-        echo "✓ Successfully updated gman!"
-        
-        # Get new version
-        local new_version=$("$gman_path" version 2>/dev/null | awk '{print $2}')
-        echo "New version: $new_version"
-        
-        # Clean up old backup files (keep only last 3)
-        local backup_dir=$(dirname "$backup_file")
-        local backup_base=$(basename "$gman_path")
-        ls -t "$backup_dir/${backup_base}.backup."* 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
-        
-        echo ""
-        echo "Update completed successfully!"
+        echo "Using wget to fetch update script..."
+        wget -qO- "$update_url" | bash
     else
-        echo "Error: Failed to update gman"
-        echo "Restoring from backup..."
-        mv "$backup_file" "$gman_path"
+        echo "Error: Neither curl nor wget is available"
+        echo "Cannot download update script"
+        echo ""
+        echo "You can manually update by running:"
+        echo "  Visit https://github.com/btassone/goverman/releases"
         return 1
     fi
 }

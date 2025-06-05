@@ -232,12 +232,15 @@ Based on git commits, we've recently worked on:
 - Released v1.13.0 with bootstrap latest support
 - Added self-update functionality:
   - `gman check-update` - Checks GitHub for newer releases
-  - `gman self-update` - Downloads and installs latest version
-  - Detects git repository and suggests `git pull` instead
-  - Creates backups before updating (keeps last 3)
-  - Verifies downloaded file is valid shell script
-  - Handles symlinks and regular files
-  - Cross-platform compatible (handles macOS readlink limitations)
+  - `gman self-update` - Downloads and runs update.sh script
+  - Created standalone update.sh script (matching install.sh pattern):
+    - Can be run directly: `curl -fsSL .../update.sh | bash`
+    - Finds gman in common locations
+    - Detects git repository and suggests `git pull` instead
+    - Creates backups before updating (keeps last 3)
+    - Verifies downloaded file is valid shell script
+    - Handles permissions and SSL issues
+  - Simplified gman self-update to just fetch and run update.sh
 - Updated documentation:
   - Added self-update commands to help text
   - Updated man page with new commands
@@ -283,6 +286,15 @@ gman version
 ./test-list-available.sh
 ./test-distro-detection.sh
 ./test-alpine-detection.sh
+./test-install.sh
+./test-uninstall-script.sh
+./test-self-update.sh
+./test-update-script.sh
+
+# One-line operations
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
 ```
 
 ## Future Considerations

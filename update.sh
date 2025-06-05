@@ -1,0 +1,229 @@
+#!/bin/bash
+
+# update.sh - Update script for gman (goverman)
+# This script updates gman to the latest version from GitHub
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+#   wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_error() {
+    echo -e "${RED}Error: $1${NC}" >&2
+}
+
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}Warning: $1${NC}"
+}
+
+print_info() {
+    echo -e "$1"
+}
+
+# Function to check for updates
+check_for_updates() {
+    local current_version="$1"
+    
+    print_info "Checking for updates..."
+    
+    # Get latest release version from GitHub
+    local latest_release=""
+    if command -v curl >/dev/null 2>&1; then
+        latest_release=$(curl -sL "https://api.github.com/repos/btassone/goverman/releases/latest" 2>/dev/null | grep '"tag_name"' | cut -d'"' -f4)
+    elif command -v wget >/dev/null 2>&1; then
+        latest_release=$(wget -qO- "https://api.github.com/repos/btassone/goverman/releases/latest" 2>/dev/null | grep '"tag_name"' | cut -d'"' -f4)
+    else
+        print_error "Neither curl nor wget is available"
+        return 1
+    fi
+    
+    if [[ -z "$latest_release" ]]; then
+        print_error "Could not fetch latest release information"
+        print_info "This may be due to network or SSL issues."
+        print_info "You can manually download the latest version from:"
+        print_info "  https://github.com/btassone/goverman/releases"
+        return 1
+    fi
+    
+    # Remove 'v' prefix for comparison
+    local latest_version="${latest_release#v}"
+    current_version="${current_version#v}"
+    
+    # Compare versions
+    if [[ "$current_version" == "$latest_version" ]]; then
+        print_success "You are already running the latest version (v$current_version)"
+        return 0
+    else
+        print_info "Update available: v$current_version → $latest_release"
+        return 2  # Indicates update is available
+    fi
+}
+
+# Main update function
+main() {
+    echo "gman Update Script"
+    echo "=================="
+    echo ""
+    
+    # Find gman binary
+    local gman_path=""
+    
+    # Check common locations
+    local search_paths=(
+        "/usr/local/bin/gman"
+        "/usr/bin/gman"
+        "$HOME/.local/bin/gman"
+        "$HOME/bin/gman"
+    )
+    
+    # Also check PATH
+    if command -v gman >/dev/null 2>&1; then
+        local found_path=$(which gman 2>/dev/null)
+        if [[ -n "$found_path" ]]; then
+            search_paths=("$found_path" "${search_paths[@]}")
+        fi
+    fi
+    
+    # Find the first existing gman
+    for path in "${search_paths[@]}"; do
+        if [[ -f "$path" ]]; then
+            gman_path="$path"
+            break
+        fi
+    done
+    
+    if [[ -z "$gman_path" ]]; then
+        print_error "gman not found in common locations"
+        print_info "Searched in: ${search_paths[*]}"
+        print_info ""
+        print_info "If gman is installed in a custom location, please run:"
+        print_info "  /path/to/gman self-update"
+        exit 1
+    fi
+    
+    print_info "Found gman at: $gman_path"
+    
+    # Check if it's a git repository
+    local gman_dir=$(dirname "$gman_path")
+    if [[ -d "$gman_dir/.git" ]] || (cd "$gman_dir" 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1); then
+        print_warning "gman appears to be in a git repository"
+        print_info "Please use 'git pull' to update instead."
+        exit 1
+    fi
+    
+    # Get current version
+    local current_version=""
+    if [[ -x "$gman_path" ]]; then
+        # Extract version from the script
+        current_version=$(grep '^GMAN_VERSION=' "$gman_path" 2>/dev/null | cut -d'"' -f2)
+    fi
+    
+    if [[ -z "$current_version" ]]; then
+        print_warning "Could not determine current gman version"
+        print_info "Proceeding with update anyway..."
+    else
+        print_info "Current version: $current_version"
+        
+        # Check for updates
+        if ! check_for_updates "$current_version"; then
+            if [[ $? -ne 2 ]]; then
+                exit 1
+            fi
+        else
+            # Already up to date
+            exit 0
+        fi
+    fi
+    
+    # Check write permissions
+    if [[ ! -w "$gman_path" ]] && [[ ! -w "$(dirname "$gman_path")" ]]; then
+        print_error "No write permission for $gman_path"
+        print_info "You may need to run this script with sudo:"
+        print_info "  curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | sudo bash"
+        exit 1
+    fi
+    
+    # Create temporary file
+    local temp_file=$(mktemp)
+    trap "rm -f $temp_file" EXIT
+    
+    # Download latest version
+    print_info ""
+    print_info "Downloading latest version..."
+    local download_url="https://raw.githubusercontent.com/btassone/goverman/main/gman"
+    local download_status=1
+    
+    if command -v curl >/dev/null 2>&1; then
+        if curl -fsSL -o "$temp_file" "$download_url" 2>/dev/null; then
+            download_status=0
+        elif curl -fsSLk -o "$temp_file" "$download_url" 2>/dev/null; then
+            download_status=0
+            print_warning "Downloaded with SSL verification disabled"
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if wget -qO "$temp_file" "$download_url" 2>/dev/null; then
+            download_status=0
+        elif wget --no-check-certificate -qO "$temp_file" "$download_url" 2>/dev/null; then
+            download_status=0
+            print_warning "Downloaded with SSL verification disabled"
+        fi
+    fi
+    
+    if [[ $download_status -ne 0 ]] || [[ ! -s "$temp_file" ]]; then
+        print_error "Failed to download latest version"
+        exit 1
+    fi
+    
+    # Verify the download is a valid shell script
+    if ! head -1 "$temp_file" | grep -q "^#!/bin/bash"; then
+        print_error "Downloaded file does not appear to be a valid gman script"
+        exit 1
+    fi
+    
+    # Create backup
+    local backup_file="${gman_path}.backup.$(date +%s)"
+    cp "$gman_path" "$backup_file"
+    print_success "Created backup: $backup_file"
+    
+    # Replace current version
+    if mv "$temp_file" "$gman_path"; then
+        chmod +x "$gman_path"
+        print_success "Successfully updated gman!"
+        
+        # Get new version
+        local new_version=$(grep '^GMAN_VERSION=' "$gman_path" 2>/dev/null | cut -d'"' -f2)
+        if [[ -n "$new_version" ]]; then
+            print_info "New version: $new_version"
+        fi
+        
+        # Clean up old backup files (keep only last 3)
+        local backup_dir=$(dirname "$backup_file")
+        local backup_base=$(basename "$gman_path")
+        ls -t "$backup_dir/${backup_base}.backup."* 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+        
+        echo ""
+        print_success "Update completed successfully!"
+        echo ""
+        print_info "Run 'gman version' to verify the update."
+    else
+        print_error "Failed to update gman"
+        print_info "Restoring from backup..."
+        mv "$backup_file" "$gman_path"
+        exit 1
+    fi
+}
+
+# Run main function
+main "$@"
