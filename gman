@@ -264,7 +264,11 @@ bootstrap_go() {
     
     # If no version specified or "latest" is used, get latest
     if [[ -z "$version" ]] || [[ "$version" == "latest" ]]; then
-        echo "No version specified, fetching latest stable version..."
+        if [[ "$version" == "latest" ]]; then
+            echo "Fetching latest stable version..."
+        else
+            echo "No version specified, fetching latest stable version..."
+        fi
         version=$(get_latest_go_version)
         if [[ $? -ne 0 ]]; then
             echo "Failed to fetch latest version. Please specify a version manually."
