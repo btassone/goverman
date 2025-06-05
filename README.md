@@ -24,7 +24,7 @@ wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/install.sh | 
 ```
 
 This will:
-- Install `gman` to `/usr/local/bin`
+- Install `gman`, `gman-update`, and `gman-uninstall` to `/usr/local/bin`
 - Set up your PATH automatically
 - Install the man page (if available)
 
@@ -150,17 +150,29 @@ gman bootstrap 1.23.9   # Specific version
 
 ## Installation
 
+### Recommended: Quick Install
+
+Use the install script (recommended):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
+```
+
+### Manual Installation
+
 Clone this repository:
 
 ```bash
 git clone https://github.com/btassone/goverman.git
 cd goverman
-chmod +x gman
+chmod +x gman gman-update gman-uninstall
 ```
 
 Add to your PATH:
 ```bash
 sudo ln -s $(pwd)/gman /usr/local/bin/gman
+sudo ln -s $(pwd)/gman-update /usr/local/bin/gman-update
+sudo ln -s $(pwd)/gman-uninstall /usr/local/bin/gman-uninstall
 # Or add the goverman directory to your PATH
 ```
 

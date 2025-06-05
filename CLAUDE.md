@@ -247,6 +247,12 @@ Based on git commits, we've recently worked on:
   - Updated README with self-update documentation
   - Added examples for all new features
 - Created test-self-update.sh for verification
+- Later in session: Removed self-update and check-update commands
+  - Moved functionality to standalone update.sh script
+  - Users now use: curl -fsSL .../update.sh | bash
+- Later in session: Renamed scripts to gman-update and gman-uninstall
+  - install.sh now installs all three scripts
+  - Provides consistent gman-* naming convention
 
 ## Usage Reminders
 ```bash
@@ -286,9 +292,9 @@ gman version
 ./test-distro-detection.sh
 ./test-alpine-detection.sh
 ./test-install.sh
-./test-uninstall-script.sh
+./test-gman-uninstall.sh
 ./test-self-update.sh
-./test-update-script.sh
+./test-gman-update.sh
 
 # One-line operations
 curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash

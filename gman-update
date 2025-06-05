@@ -152,7 +152,7 @@ main() {
     if [[ ! -w "$gman_path" ]] && [[ ! -w "$(dirname "$gman_path")" ]]; then
         print_error "No write permission for $gman_path"
         print_info "You may need to run this script with sudo:"
-        print_info "  curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | sudo bash"
+        print_info "  curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-update | sudo bash"
         exit 1
     fi
     
