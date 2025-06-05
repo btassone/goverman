@@ -32,19 +32,23 @@ This will:
 
 Update gman to the latest version:
 
-Using curl:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+gman-update
 ```
 
-Using wget:
+Or using curl:
 ```bash
-wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
+```
+
+Or using wget:
+```bash
+wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
 ```
 
 This will:
 - Check for the latest version
-- Download and install the update
+- Download and install updates for gman and companion scripts
 - Create a backup of the current version
 - Preserve your existing Go installations
 
@@ -52,18 +56,23 @@ This will:
 
 Completely remove goverman and all installed Go versions:
 
-Using curl:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
+gman-uninstall
 ```
 
-Using wget:
+Or using curl:
 ```bash
-wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
+```
+
+Or using wget:
+```bash
+wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
 ```
 
 This will:
-- Remove the `gman` binary and man page
+- Remove gman and companion scripts (gman-update, gman-uninstall)
+- Remove the man page
 - Remove all gman-installed Go versions
 - Clean up PATH entries from shell profiles
 - Create backups of modified shell profiles
@@ -127,7 +136,8 @@ gman bootstrap 1.23.9   # Specific version
 - Automatic fallback from official to direct method
 
 ### 🔄 Easy Updates
-- One-command update: `curl -fsSL .../update.sh | bash`
+- One-command update: `gman-update`
+- Updates all components (gman, gman-update, gman-uninstall)
 - Automatic backup before updates
 - Preserves all your Go installations
 

@@ -171,6 +171,18 @@ main() {
     chmod +x gman
     print_success "Downloaded gman"
     
+    # Download gman-update script
+    print_info "Downloading gman-update..."
+    download_file "${REPO_URL}/raw/main/gman-update" "gman-update"
+    chmod +x gman-update
+    print_success "Downloaded gman-update"
+    
+    # Download gman-uninstall script
+    print_info "Downloading gman-uninstall..."
+    download_file "${REPO_URL}/raw/main/gman-uninstall" "gman-uninstall"
+    chmod +x gman-uninstall
+    print_success "Downloaded gman-uninstall"
+    
     # Download man page (optional - may not exist yet)
     print_info "Downloading man page..."
     if download_file "${REPO_URL}/raw/main/gman.1" "gman.1" 2>/dev/null; then
@@ -181,10 +193,12 @@ main() {
         INSTALL_MAN=false
     fi
     
-    # Install gman
-    print_info "Installing gman to $INSTALL_DIR..."
+    # Install all scripts
+    print_info "Installing scripts to $INSTALL_DIR..."
     $SUDO mv gman "$INSTALL_DIR/"
-    print_success "Installed gman"
+    $SUDO mv gman-update "$INSTALL_DIR/"
+    $SUDO mv gman-uninstall "$INSTALL_DIR/"
+    print_success "Installed gman, gman-update, and gman-uninstall"
     
     # Install man page if downloaded
     if [[ "$INSTALL_MAN" == "true" ]]; then

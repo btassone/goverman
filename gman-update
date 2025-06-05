@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# update.sh - Update script for gman (goverman)
-# This script updates gman to the latest version from GitHub
+# gman-update - Update script for gman (goverman)
+# This script updates gman and its companion scripts to the latest version
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
-#   wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+#   gman-update                  # When installed via install.sh
+#   curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
+#   wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
 
 set -e
 
@@ -201,6 +202,35 @@ main() {
     if mv "$temp_file" "$gman_path"; then
         chmod +x "$gman_path"
         print_success "Successfully updated gman!"
+        
+        # Now update companion scripts if they exist
+        local gman_dir=$(dirname "$gman_path")
+        local companion_scripts=("gman-update" "gman-uninstall")
+        
+        for script in "${companion_scripts[@]}"; do
+            if [[ -f "$gman_dir/$script" ]]; then
+                print_info "Updating $script..."
+                local temp_companion=$(mktemp)
+                local companion_url="https://raw.githubusercontent.com/btassone/goverman/main/$script"
+                
+                if command -v curl >/dev/null 2>&1; then
+                    curl -fsSL -o "$temp_companion" "$companion_url" 2>/dev/null || \
+                    curl -fsSLk -o "$temp_companion" "$companion_url" 2>/dev/null
+                elif command -v wget >/dev/null 2>&1; then
+                    wget -qO "$temp_companion" "$companion_url" 2>/dev/null || \
+                    wget --no-check-certificate -qO "$temp_companion" "$companion_url" 2>/dev/null
+                fi
+                
+                if [[ -s "$temp_companion" ]]; then
+                    mv "$temp_companion" "$gman_dir/$script"
+                    chmod +x "$gman_dir/$script"
+                    print_success "Updated $script"
+                else
+                    print_warning "Failed to update $script"
+                    rm -f "$temp_companion"
+                fi
+            fi
+        done
         
         # Get new version
         local new_version=$(grep '^GMAN_VERSION=' "$gman_path" 2>/dev/null | cut -d'"' -f2)

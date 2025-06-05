@@ -271,8 +271,8 @@ gman list-available --all       # List all available versions
 # Set default version
 gman set-default 1.23.9
 
-# Update gman itself (use update.sh script)
-# curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
+# Update gman itself
+gman-update  # When installed via install.sh
 
 # Check gman version
 gman version
@@ -292,8 +292,13 @@ gman version
 
 # One-line operations
 curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/install.sh | bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/update.sh | bash
-curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-update | bash
+curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
+
+# After installation, these are available as commands:
+gman            # Main command
+gman-update     # Update gman and companion scripts
+gman-uninstall  # Uninstall everything
 ```
 
 ## Future Considerations

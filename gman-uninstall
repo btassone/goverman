@@ -1,6 +1,12 @@
 #!/bin/bash
-# goverman uninstallation script
-# This script completely removes gman (Go Version Manager) and all installed Go versions
+
+# gman-uninstall - Universal uninstaller for gman (goverman)
+# This script completely removes gman and all installed Go versions
+#
+# Usage:
+#   gman-uninstall               # When installed via install.sh
+#   curl -fsSL https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
+#   wget -qO- https://raw.githubusercontent.com/btassone/goverman/main/gman-uninstall | bash
 
 set -e
 
@@ -63,7 +69,7 @@ check_permissions() {
     fi
 }
 
-# Remove gman binary
+# Remove gman binary and companion scripts
 remove_gman_binary() {
     if [[ -f "$GMAN_BIN" ]]; then
         print_info "Removing gman binary..."
@@ -73,6 +79,20 @@ remove_gman_binary() {
     else
         print_info "gman binary not found at $GMAN_BIN"
     fi
+    
+    # Remove companion scripts
+    local gman_dir=$(dirname "$GMAN_BIN")
+    local companion_scripts=("gman-update" "gman-uninstall")
+    
+    for script in "${companion_scripts[@]}"; do
+        local script_path="$gman_dir/$script"
+        if [[ -f "$script_path" ]]; then
+            print_info "Removing $script..."
+            $SUDO rm -f "$script_path"
+            REMOVED_ITEMS+=("$script from $script_path")
+            print_success "Removed $script"
+        fi
+    done
 }
 
 # Remove man page

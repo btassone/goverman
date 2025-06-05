@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test script for uninstall.sh
+# Test script for gman-uninstall
 # This script tests the goverman uninstaller
 
 set -e
@@ -104,17 +104,17 @@ trap cleanup EXIT
 
 # Test 1: Check uninstall script exists and is executable
 print_test "Uninstall script exists and is executable"
-if [[ -f "uninstall.sh" && -x "uninstall.sh" ]]; then
+if [[ -f "gman-uninstall" && -x "gman-uninstall" ]]; then
     print_pass
 else
-    print_fail "uninstall.sh not found or not executable"
+    print_fail "gman-uninstall not found or not executable"
 fi
 
 # Test 2: Test uninstaller removes gman binary
 print_test "Uninstaller removes gman binary"
 setup_mock_installation
-# Modify uninstall.sh to use our test directories
-sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" uninstall.sh > "$TEST_DIR/uninstall_test.sh"
+# Modify gman-uninstall to use our test directories
+sed "s|/usr/local/bin/gman|$TEST_DIR/usr/local/bin/gman|g" gman-uninstall > "$TEST_DIR/uninstall_test.sh"
 sed -i.bak "s|/usr/local/share/man/man1/gman.1|$TEST_DIR/usr/local/share/man/man1/gman.1|g" "$TEST_DIR/uninstall_test.sh"
 chmod +x "$TEST_DIR/uninstall_test.sh"
 

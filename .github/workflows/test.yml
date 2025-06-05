@@ -285,7 +285,7 @@ jobs:
         cache: false  # Disable cache since this isn't a Go module (no go.sum)
     
     - name: Make scripts executable
-      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh test-alpine-detection.sh test-distro-detection.sh test-bootstrap.sh test-uninstall-all.sh test-install.sh install.sh test-uninstall-script.sh uninstall.sh test-self-update.sh update.sh test-update-script.sh
+      run: chmod +x gman test-go-scripts.sh test-path-setup.sh test-list-available.sh test-alpine-detection.sh test-distro-detection.sh test-bootstrap.sh test-uninstall-all.sh test-install.sh install.sh test-gman-uninstall.sh gman-uninstall test-self-update.sh gman-update test-gman-update.sh
       if: runner.os != 'Windows'
     
     - name: Run PATH setup tests (Unix)
@@ -320,16 +320,16 @@ jobs:
       run: ./test-install.sh
       if: runner.os != 'Windows'
     
-    - name: Run uninstall.sh tests (Unix)
-      run: ./test-uninstall-script.sh
+    - name: Run gman-uninstall tests (Unix)
+      run: ./test-gman-uninstall.sh
       if: runner.os != 'Windows'
     
     - name: Run self-update tests (Unix)
       run: ./test-self-update.sh
       if: runner.os != 'Windows'
     
-    - name: Run update.sh tests (Unix)
-      run: ./test-update-script.sh
+    - name: Run gman-update tests (Unix)
+      run: ./test-gman-update.sh
       if: runner.os != 'Windows'
     
     - name: Run quick tests (Windows)
@@ -375,12 +375,12 @@ jobs:
       shell: bash
       if: runner.os == 'Windows'
     
-    - name: Run uninstall.sh tests (Windows)
-      run: ./test-uninstall-script.sh
+    - name: Run gman-uninstall tests (Windows)
+      run: ./test-gman-uninstall.sh
       shell: bash
       if: runner.os == 'Windows'
     
-    - name: Run update.sh tests (Windows)
-      run: ./test-update-script.sh
+    - name: Run gman-update tests (Windows)
+      run: ./test-gman-update.sh
       shell: bash
       if: runner.os == 'Windows'
