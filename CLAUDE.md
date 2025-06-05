@@ -312,3 +312,20 @@ gman-uninstall  # Uninstall everything
 - Enhanced conflict resolution for system Go installations
 - Add support for beta/RC versions
 - Cache available versions list for offline use
+
+## Important Development Reminders
+
+### Release Process
+When creating a new release/tag:
+1. **ALWAYS update hardcoded version numbers** before creating tags:
+   - `gman` script: Update `GMAN_VERSION` variable (line ~21)
+   - `gman.1` man page: Update version in `.TH` header (line 1)
+2. **ALWAYS commit and push all changes** before creating tags
+3. **NEVER create tags or releases** until all tests pass
+4. **ALWAYS push changes** to remote after committing
+
+### General Development
+- **ALWAYS commit and push** changes after making modifications
+- **NEVER leave changes uncommitted** - commit frequently
+- **ALWAYS run tests** before creating releases
+- **ALWAYS update documentation** when adding/changing features
