@@ -18,7 +18,7 @@
 set -e
 
 # Version information
-GMAN_VERSION="v1.14.3"
+GMAN_VERSION="v1.15.0"
 
 # Function to display usage
 show_usage() {
@@ -810,19 +810,42 @@ install_direct() {
     # Try curl first (more reliable across distributions)
     if command -v curl >/dev/null 2>&1; then
         echo "Using curl..."
+        # First attempt: normal download
         if curl -L --progress-bar -o "$temp_dir/$filename" "$url"; then
             download_status=0
             downloaded=true
         else
             download_status=$?
             echo "Warning: curl failed with status $download_status"
-            # Try again with -k for SSL issues
-            if [[ $download_status -eq 60 ]] || [[ $download_status -eq 77 ]]; then
-                echo "Retrying with -k due to SSL error..."
-                if curl -kL --progress-bar -o "$temp_dir/$filename" "$url"; then
+            
+            # Corporate VPN/Proxy handling - try multiple fallback methods
+            if [[ $download_status -eq 28 ]] || [[ $download_status -eq 7 ]]; then
+                echo "Detected network timeout (likely corporate VPN/proxy issue)"
+                echo "Trying with extended timeout and connection options..."
+                if curl -L --connect-timeout 30 --max-time 600 --retry 3 --progress-bar -o "$temp_dir/$filename" "$url"; then
                     download_status=0
                     downloaded=true
-                    echo "✓ Download succeeded with -k (insecure)"
+                    echo "✓ Download succeeded with extended timeout"
+                fi
+            fi
+            
+            # SSL/TLS issues (common with corporate proxies)
+            if [[ "$downloaded" == "false" ]] && ([[ $download_status -eq 60 ]] || [[ $download_status -eq 77 ]] || [[ $download_status -eq 35 ]]); then
+                echo "Retrying with relaxed SSL verification (corporate proxy detected)..."
+                if curl -kL --connect-timeout 30 --max-time 600 --retry 2 --progress-bar -o "$temp_dir/$filename" "$url"; then
+                    download_status=0
+                    downloaded=true
+                    echo "✓ Download succeeded with relaxed SSL (corporate network)"
+                fi
+            fi
+            
+            # Final fallback: try with system proxy auto-detection
+            if [[ "$downloaded" == "false" ]]; then
+                echo "Trying with system proxy settings..."
+                if curl -L --connect-timeout 30 --max-time 600 --retry 1 --progress-bar -o "$temp_dir/$filename" "$url"; then
+                    download_status=0
+                    downloaded=true
+                    echo "✓ Download succeeded with system proxy"
                 fi
             fi
         fi
@@ -830,20 +853,22 @@ install_direct() {
     
     # If curl failed or isn't available, try wget
     if [[ "$downloaded" == "false" ]] && command -v wget >/dev/null 2>&1; then
-        echo "Trying wget..."
-        if wget -q --show-progress -O "$temp_dir/$filename" "$url" 2>&1; then
+        echo "Trying wget as fallback..."
+        # First attempt with extended timeout for corporate networks
+        if wget -q --show-progress --timeout=60 --tries=3 -O "$temp_dir/$filename" "$url" 2>&1; then
             download_status=0
             downloaded=true
         else
             download_status=$?
             echo "Warning: wget failed with status $download_status"
-            # Try again with --no-check-certificate for SSL issues
-            if [[ $download_status -eq 5 ]]; then
-                echo "Retrying with --no-check-certificate due to SSL error..."
-                if wget --no-check-certificate -q --show-progress -O "$temp_dir/$filename" "$url" 2>&1; then
+            
+            # Corporate proxy/SSL issues
+            if [[ $download_status -eq 5 ]] || [[ $download_status -eq 4 ]]; then
+                echo "Retrying wget with relaxed SSL verification (corporate proxy)..."
+                if wget --no-check-certificate -q --show-progress --timeout=60 --tries=2 -O "$temp_dir/$filename" "$url" 2>&1; then
                     download_status=0
                     downloaded=true
-                    echo "✓ Download succeeded with --no-check-certificate"
+                    echo "✓ Download succeeded with wget (corporate network)"
                 fi
             fi
         fi
@@ -856,7 +881,23 @@ install_direct() {
         if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
             echo "Neither curl nor wget is available for download"
         fi
-        echo "Please check your internet connection and try again"
+        
+        # Check for common corporate network issues
+        echo ""
+        echo "Troubleshooting suggestions:"
+        if pgrep -i "anyconnect\|cisco\|vpn" >/dev/null 2>&1; then
+            echo "  • Corporate VPN detected - VPN may be blocking downloads"
+            echo "  • Try temporarily disconnecting from VPN"
+        fi
+        
+        # Check for proxy settings
+        if [[ -n "$HTTP_PROXY" ]] || [[ -n "$HTTPS_PROXY" ]] || [[ -n "$http_proxy" ]] || [[ -n "$https_proxy" ]]; then
+            echo "  • Proxy settings detected - verify proxy configuration"
+        fi
+        
+        echo "  • Check your internet connection"
+        echo "  • Verify firewall/corporate network allows access to go.dev"
+        echo "  • Contact IT if on corporate network"
         exit 1
     fi
     
